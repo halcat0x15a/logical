@@ -1,44 +1,63 @@
 package logical
 
-trait Logic[A] { self =>
+trait Logic[S, A] { self =>
 
-  def apply(env: Env): Stream[(Env, A)]
+  def apply(s: S): Stream[(S, A)]
 
-  def run: Stream[A] =
-    apply(Env(Set.empty, Map.empty)).map { case (_, value) => value }
+  def run(implicit s: S): Stream[A] =
+    apply(s).map { case (_, value) => value }
 
-  def map[B](f: A => B): Logic[B] =
-    new Logic[B] {
-      def apply(env: Env): Stream[(Env, B)] =
-        self.apply(env).map { case (env, a) => (env, f(a)) }
+  def map[B](f: A => B): Logic[S, B] =
+    new Logic[S, B] {
+      def apply(s: S): Stream[(S, B)] =
+        self.apply(s).map { case (s, a) => (s, f(a)) }
     }
 
-  def flatMap[B](f: A => Logic[B]): Logic[B] =
-    new Logic[B] {
-      def apply(env: Env): Stream[(Env, B)] =
-        self.apply(env).flatMap { case (env, a) => f(a).apply(env) }
+  def flatMap[B](f: A => Logic[S, B]): Logic[S, B] =
+    new Logic[S, B] {
+      def apply(s: S): Stream[(S, B)] =
+        self.apply(s).flatMap { case (s, a) => f(a).apply(s) }
     }
 
-  def &&&[B](that: => Logic[B]): Logic[B] = flatMap[B](_ => that)
+  def unary_! : Logic[S, Unit] =
+    new Logic[S, Unit] {
+      def apply(s: S): Stream[(S, Unit)] =
+        if (self.apply(s).isEmpty)
+          Stream((s, ()))
+        else
+          Stream.empty
+    }
 
-  def |||(that: => Logic[A]): Logic[A] =
-    new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] =
-        self.apply(env).append(that.apply(env))
+  def &&&[B](that: => Logic[S, B]): Logic[S, B] = flatMap(_ => that)
+
+  def |||(that: => Logic[S, A]): Logic[S, A] =
+    new Logic[S, A] {
+      def apply(s: S): Stream[(S, A)] =
+        self.apply(s).append(that.apply(s))
     }
 
 }
 
 object Logic {
 
-  def succeed[A](value: A): Logic[A] =
-    new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] = Stream((env, value))
+  def succeed[S, A](value: A): Logic[S, A] =
+    new Logic[S, A] {
+      def apply(s: S): Stream[(S, A)] = Stream((s, value))
     }
 
-  def fail[A]: Logic[A] =
-    new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] = Stream.empty
+  def fail[S, A]: Logic[S, A] =
+    new Logic[S, A] {
+      def apply(s: S): Stream[(S, A)] = Stream.empty
+    }
+
+  def get[S]: Logic[S, S] =
+    new Logic[S, S] {
+      def apply(s: S): Stream[(S, S)] = Stream((s, s))
+    }
+
+  def put[S](state: S): Logic[S, Unit] =
+    new Logic[S, Unit] {
+      def apply(s: S): Stream[(S, Unit)] = Stream((state, ()))
     }
 
 }

@@ -4,7 +4,7 @@ sealed trait Cons[A] {
 
   import Cons._
 
-  def ===(that: Cons[A])(implicit A: Unify[A]): Logic[Unit] =
+  def ===(that: Cons[A])(implicit A: Unify[A]): Logic[Env, Unit] =
     (this, that) match {
       case (Empty(), Empty()) => Logic.succeed(())
       case (Cell(_, _), Empty()) => Logic.fail
@@ -12,9 +12,9 @@ sealed trait Cons[A] {
       case (Cell(x, xs), Cell(y, ys)) => x === y &&& xs === ys
     }
 
-  def toList(implicit A: Unify[A]): Logic[List[A]] =
+  def toList(implicit A: Unify[A]): Logic[Env, List[A]] =
     this match {
-      case Empty() => Logic.succeed(List.empty[A])
+      case Empty() => Logic.succeed(List.empty)
       case Cell(head, tail) =>
         for {
           head <- head.get
@@ -38,7 +38,7 @@ object Cons {
 
   def cell[A](head: Var[A], tail: Var[Cons[A]]): Cons[A] = Cell(head, tail)
 
-  def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Unit] = {
+  def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Env, Unit] = {
     val xh, zh = Var[A]
     val xt, zt = Var[Cons[A]]
     (xs === Var(empty) &&& ys === zs) ||| (xs === Var(cell(xh, xt)) &&& zs === Var(cell(zh, zt)) &&& xh === zh &&& append(xt, ys, zt))
@@ -46,7 +46,7 @@ object Cons {
 
   implicit def unify[A: Unify]: Unify[Cons[A]] =
     new Unify[Cons[A]] {
-      def unify(x: Cons[A], y: Cons[A]): Logic[Unit] = x === y
+      def unify(x: Cons[A], y: Cons[A]): Logic[Env, Unit] = x === y
     }
 
 }

@@ -12,3 +12,9 @@ case class Env(keySet: Set[Set[String]], valueMap: Map[String, Any]) {
     valueMap.get(key).orElse(keySet.find(_.contains(key)).flatMap(_.collectFirst(valueMap)))
 
 }
+
+object Env {
+
+  implicit val empty: Env = Env(Set.empty, Map.empty)
+
+}

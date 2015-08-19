@@ -6,22 +6,19 @@ sealed trait Var[A] { self =>
 
   import Var._
 
-  def ===(that: Var[A])(implicit A: Unify[A]): Logic[Unit] = {
-    def set(key: String, value: A): Logic[Unit] =
-      new Logic[Unit] {
-        def apply(env: Env): Stream[(Env, Unit)] =
-          env.get(key).fold(Stream((env.set(key, value), ())))(v => A.unify(v.asInstanceOf[A], value)(env))
-      }
+  def ===(that: Var[A])(implicit A: Unify[A]): Logic[Env, Unit] = {
+    def set(key: String, value: A): Logic[Env, Unit] =
+      Logic.get.flatMap(env => env.get(key).fold(Logic.put(env.set(key, value)))(v => A.unify(v.asInstanceOf[A], value)))
     (this, that) match {
       case (Bound(x), Bound(y)) => A.unify(x, y)
       case (Unbound(key), Bound(value)) => set(key, value)
       case (Bound(value), Unbound(key)) => set(key, value)
-      case (Unbound(x), Unbound(y)) => new Logic[Unit] { def apply(env: Env): Stream[(Env, Unit)] = Stream((env.add(Set(x, y)), ())) }
+      case (Unbound(x), Unbound(y)) => Logic.get.flatMap(env => Logic.put(env.add(Set(x, y))))
     }
   }
 
-  def get: Logic[A] =
-    new Logic[A] {
+  def get: Logic[Env, A] =
+    new Logic[Env, A] {
       def apply(env: Env): Stream[(Env, A)] =
         self match {
           case Bound(value) => Stream((env, value))
@@ -43,7 +40,7 @@ object Var {
 
   implicit def unify[A](implicit A: Unify[A]): Unify[Var[A]] =
     new Unify[Var[A]] {
-      def unify(x: Var[A], y: Var[A]): Logic[Unit] = x === y
+      def unify(x: Var[A], y: Var[A]): Logic[Env, Unit] = x === y
     }
 
 }
