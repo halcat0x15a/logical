@@ -1,15 +1,26 @@
-package slog
+package logical
 
 sealed trait Cons[A] {
 
   import Cons._
 
-  def ===(that: Cons[A])(implicit A: Unify[A]): Logic =
+  def ===(that: Cons[A])(implicit A: Unify[A]): Logic[Unit] =
     (this, that) match {
-      case (Empty(), Empty()) => Logic.succeed
+      case (Empty(), Empty()) => Logic.succeed(())
       case (Cell(_, _), Empty()) => Logic.fail
       case (Empty(), Cell(_, _)) => Logic.fail
       case (Cell(x, xs), Cell(y, ys)) => x === y &&& xs === ys
+    }
+
+  def toList(implicit A: Unify[A]): Logic[List[A]] =
+    this match {
+      case Empty() => Logic.succeed(List.empty[A])
+      case Cell(head, tail) =>
+        for {
+          head <- head.get
+          cons <- tail.get
+          tail <- cons.toList
+        } yield head :: tail
     }
 
 }
@@ -27,32 +38,15 @@ object Cons {
 
   def cell[A](head: Var[A], tail: Var[Cons[A]]): Cons[A] = Cell(head, tail)
 
-  def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic = {
+  def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Unit] = {
     val xh, zh = Var[A]
     val xt, zt = Var[Cons[A]]
     (xs === Var(empty) &&& ys === zs) ||| (xs === Var(cell(xh, xt)) &&& zs === Var(cell(zh, zt)) &&& xh === zh &&& append(xt, ys, zt))
   }
 
-  def toList[A: Unify](xs: Var[Cons[A]], ys: Unbound[List[A]]): Logic =
-    new Logic {
-      def apply(env: Env): Stream[Env] =
-        Var.get(env, xs).flatMap(get(env, _)).toStream.flatMap(env.set(ys.id, _))
-    }
-
-  def get[A](env: Env, xs: Cons[A]): Option[List[A]] =
-    xs match {
-      case Empty() => Some(List.empty[A])
-      case Cell(head, tail) =>
-        for {
-          head <- Var.get(env, head)
-          cons <- Var.get(env, tail)
-          tail <- get(env, cons)
-        } yield head :: tail
-    }
-
   implicit def unify[A: Unify]: Unify[Cons[A]] =
     new Unify[Cons[A]] {
-      def unify(x: Cons[A], y: Cons[A]): Logic = x === y
+      def unify(x: Cons[A], y: Cons[A]): Logic[Unit] = x === y
     }
 
 }

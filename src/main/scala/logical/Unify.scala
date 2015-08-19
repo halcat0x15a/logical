@@ -1,8 +1,8 @@
-package slog
+package logical
 
 trait Unify[A] {
 
-  def unify(x: A, y: A): Logic
+  def unify(x: A, y: A): Logic[Unit]
 
 }
 
@@ -10,8 +10,11 @@ object Unify {
 
   def unify[A]: Unify[A] =
     new Unify[A] {
-      def unify(x: A, y: A): Logic =
-        if (x == y) Logic.succeed else Logic.fail
+      def unify(x: A, y: A): Logic[Unit] =
+        if (x == y)
+          Logic.succeed(())
+        else
+          Logic.fail
     }
 
   implicit def int: Unify[Int] = unify
