@@ -28,13 +28,6 @@ class Example extends FunSuite {
     assert((Nat.lteq(n, Var(Nat(3))) &&& n.get.flatMap(_.toInt)).run == Stream(0, 1, 2, 3))
   }
 
-  test("Nat.lt") {
-    val n = Var[Nat]
-    assert(Nat.lt(Var(Nat(2)), Var(Nat(3))).run == Stream(()))
-    assert(Nat.lt(Var(Nat(3)), Var(Nat(3))).run == Stream())
-    assert((Nat.lt(n, Var(Nat(3))) &&& n.get.flatMap(_.toInt)).run == Stream(0, 1, 2))
-  }
-
   test("Nat.mod") {
     val q = Var[Nat]
     val r = Var[Nat]
@@ -46,16 +39,22 @@ class Example extends FunSuite {
     assert((Nat.divmod(q, Var(Nat(3)), Var(Nat(2)), r) &&& q.get.flatMap(_.toInt)).run.take(1) == Stream(6))
   }
 
-  test("fizzbuzz") {
-    def fizzbuzz(n: Var[Nat], s: Var[String]): Logic[Env, Unit] =
-      Nat.lt(Var(Nat(0)), n) &&& (s === Var("FizzBuzz") &&& Nat.divmod(n, Var(Nat(15)), Var[Nat], Var(Nat(0)))) ||| (s === Var("Fizz") &&& Nat.divmod(n, Var(Nat(3)), Var[Nat], Var(Nat(0)))) &&& !Nat.divmod(n, Var(Nat(15)), Var[Nat], Var(Nat(0))) ||| (s === Var("Buzz") &&& Nat.divmod(n, Var(Nat(5)), Var[Nat], Var(Nat(0))) &&& !Nat.divmod(n, Var(Nat(15)), Var[Nat], Var(Nat(0))))
+  test("FizzBuzz") {
+    def fizzbuzz(n: Var[Nat], s: Var[String]): Logic[Env, Unit] = {
+      val isFizz = Nat.divmod(n, Var(Nat(3)), Var(Nat(Var[Nat])), Var(Nat(0)))
+      val isBuzz = Nat.divmod(n, Var(Nat(5)), Var(Nat(Var[Nat])), Var(Nat(0)))
+      val isFizzBuzz = Nat.divmod(n, Var(Nat(15)), Var(Nat(Var[Nat])), Var(Nat(0)))
+      (s === Var("FizzBuzz") &&& isFizzBuzz) ||| (s === Var("Fizz") &&& isFizz &&& !isFizzBuzz) ||| (s === Var("Buzz") &&& isBuzz &&& !isFizzBuzz)
+    }
     val s = Var[String]
     val n = Var[Nat]
     assert((fizzbuzz(Var(Nat(6)), s) &&& s.get).run == Stream("Fizz"))
     assert((fizzbuzz(Var(Nat(25)), s) &&& s.get).run == Stream("Buzz"))
+    assert((fizzbuzz(Var(Nat(45)), s) &&& s.get).run == Stream("FizzBuzz"))
     assert((fizzbuzz(n, Var("Fizz")) &&& n.get.flatMap(_.toInt)).run.take(5) == Stream(3, 6, 9, 12, 18))
     assert((fizzbuzz(n, Var("Buzz")) &&& n.get.flatMap(_.toInt)).run.take(5) == Stream(5, 10, 20, 25, 35))
     assert((fizzbuzz(n, Var("FizzBuzz")) &&& n.get.flatMap(_.toInt)).run.take(5) == Stream(15, 30, 45, 60, 75))
+    assert((Nat.lteq(Var(Nat(1)), n) &&& (fizzbuzz(n, s) &&& s.get ||| !fizzbuzz(n, s) &&& n.get.flatMap(_.toInt).map(_.toString))).run.take(5) == Stream("1", "2", "Fizz", "4", "Buzz"))
   }
 
 }

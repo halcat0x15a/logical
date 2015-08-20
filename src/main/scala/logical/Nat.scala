@@ -30,6 +30,10 @@ object Nat {
 
   private case class Succ(n: Var[Nat]) extends Nat
 
+  def apply(): Nat = Zero
+
+  def apply(n: Var[Nat]): Nat = Succ(n)
+
   def apply(n: Int): Nat =
     if (n <= 0)
       Zero
@@ -39,12 +43,7 @@ object Nat {
   def lteq(x: Var[Nat], y: Var[Nat]): Logic[Env, Unit] = {
     val px = Var[Nat]
     val py = Var[Nat]
-    x === Var(Zero) ||| (x === Var(Succ(px)) &&& y === Var(Succ(py)) &&& lteq(px, py))
-  }
-
-  def lt(x: Var[Nat], y: Var[Nat]): Logic[Env, Unit] = {
-    val py = Var[Nat]
-    y === Var(Succ(py)) &&& lteq(x, py)
+    x === Var(Zero) &&& (y === Var(Zero) ||| y === Var(Succ(py)) &&& lteq(x, py)) ||| (x === Var(Succ(px)) &&& y === Var(Succ(py)) &&& lteq(px, py))
   }
 
   def plus(x: Var[Nat], y: Var[Nat], z: Var[Nat]): Logic[Env, Unit] = {
@@ -56,7 +55,7 @@ object Nat {
   def divmod(x: Var[Nat], y: Var[Nat], q: Var[Nat], r: Var[Nat]): Logic[Env, Unit] = {
     val z = Var[Nat]
     val pq = Var[Nat]
-    (lt(x, y) &&& q === Var(Zero) &&& r === x) ||| (plus(z, y, x) &&& q === Var(Succ(pq)) &&& divmod(z, y, pq, r))
+    (lteq(Var(Succ(x)), y) &&& q === Var(Zero) &&& r === x) ||| (plus(z, y, x) &&& q === Var(Succ(pq)) &&& divmod(z, y, pq, r))
   }
 
   implicit val unify: Unify[Nat] =
