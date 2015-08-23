@@ -60,4 +60,7 @@ object Logic {
       def apply(s: S): Stream[(S, Unit)] = Stream((state, ()))
     }
 
+  def sequence[S, A](logics: List[Logic[S, A]]): Logic[S, List[A]] =
+    logics.foldRight(succeed[S, List[A]](Nil))((logic, acc) => acc.flatMap(as => logic.map(a => a :: as)))
+
 }

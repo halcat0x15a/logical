@@ -40,6 +40,11 @@ object Nat {
     else
       Succ(Var(apply(n - 1)))
 
+  def nat(n: Var[Nat]): Logic[Env, Unit] = {
+    val m = Var[Nat]
+    n === Var(Zero) ||| n === Var(Succ(m)) &&& nat(m)
+  }
+
   def lteq(x: Var[Nat], y: Var[Nat]): Logic[Env, Unit] = {
     val px = Var[Nat]
     val py = Var[Nat]
@@ -48,8 +53,9 @@ object Nat {
 
   def plus(x: Var[Nat], y: Var[Nat], z: Var[Nat]): Logic[Env, Unit] = {
     val px = Var[Nat]
+    val py = Var[Nat]
     val pz = Var[Nat]
-    (x === Var(Zero) &&& y === z) ||| (x === Var(Succ(px)) &&& z === Var(Succ(pz)) &&& plus(px, y, pz))
+    x === Var(Zero) &&& (y === Var(Zero) &&& z === Var(Zero) ||| y === Var(Succ(py)) &&& z === Var(Succ(pz)) &&& plus(x, py, pz)) ||| (x === Var(Succ(px)) &&& z === Var(Succ(pz)) &&& plus(px, y, pz))
   }
 
   def divmod(x: Var[Nat], y: Var[Nat], q: Var[Nat], r: Var[Nat]): Logic[Env, Unit] = {

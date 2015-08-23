@@ -7,17 +7,43 @@ class Example extends FunSuite {
   test("Cons.append") {
     val xs = Var[Cons[Int]]
     val ys = Var[Cons[Int]]
-    assert((Cons.append(Var(Cons(1, 2, 3)), Var(Cons(4, 5)), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 2, 3, 4, 5)))
-    assert((Cons.append(Var(Cons(1, 2, 3)), xs, Var(Cons(1, 2, 3, 4, 5))) &&& xs.get.flatMap(_.toList)).run == Stream(List(4, 5)))
-    assert((Cons.append(xs, ys, Var(Cons(1, 2, 3))) &&& (for (xs <- xs.get.flatMap(_.toList); ys <- ys.get.flatMap(_.toList)) yield (xs, ys))).run == Stream((Nil, List(1, 2, 3)), (List(1), List(2, 3)), (List(1, 2), List(3)), (List(1, 2, 3), Nil)))
+    assert((Cons.append(Var(Cons.fromList(List(1, 2, 3))), Var(Cons.fromList(List(4, 5))), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 2, 3, 4, 5)))
+    assert((Cons.append(Var(Cons.fromList(List(1, 2, 3))), xs, Var(Cons.fromList(List(1, 2, 3, 4, 5)))) &&& xs.get.flatMap(_.toList)).run == Stream(List(4, 5)))
+    assert((Cons.append(xs, ys, Var(Cons.fromList(List(1, 2, 3)))) &&& (for (xs <- xs.get.flatMap(_.toList); ys <- ys.get.flatMap(_.toList)) yield (xs, ys))).run == Stream((Nil, List(1, 2, 3)), (List(1), List(2, 3)), (List(1, 2), List(3)), (List(1, 2, 3), Nil)))
+  }
+
+  test("Cons.select") {
+    val xs = Var[Cons[Int]]
+    assert((Cons.select(Var(1), Var(Cons.fromList(List(1, 2, 3))), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(2, 3)))
+    assert((Cons.select(Var(2), Var(Cons.fromList(List(1, 2, 3))), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 3)))
+    assert((Cons.select(Var(2), Var(Cons.fromList(List(2, 1, 2, 3))), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 2, 3), List(2, 1, 3)))
+  }
+
+  test("Cons.permutations") {
+    val xs = Var[Cons[Int]]
+    assert((Cons.permutations(Var(Cons.fromList(List(1, 2, 3))), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 2, 3), List(1, 3, 2), List(2, 1, 3), List(2, 3, 1), List(3, 1, 2), List(3, 2, 1)))
+  }
+
+  test("Cons.combinations") {
+    val xs = Var[Cons[Int]]
+    assert((Cons.combinations(Var(Nat(2)), Var(Cons.fromList(List(1, 2, 3))), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 2), List(1, 3), List(2, 3)))
+  }
+
+  test("Cons.contains") {
+    val xs = Var[Cons[Int]]
+    assert(Cons.contains(Var(1), Var(Cons.fromList(List(1, 2, 3)))).run == Stream(()))
+    assert(Cons.contains(Var(0), Var(Cons.fromList(List(1, 2, 3)))).run == Stream())
   }
 
   test("Nat.plus") {
-    val n = Var[Nat]
-    val m = Var[Nat]
-    assert((Nat.plus(Var(Nat(2)), Var(Nat(3)), n) &&& n.get.flatMap(_.toInt)).run == Stream(5))
-    assert((Nat.plus(Var(Nat(2)), n, Var(Nat(5))) &&& n.get.flatMap(_.toInt)).run == Stream(3))
-    assert((Nat.plus(n, m, Var(Nat(3))) &&& (for (n <- n.get.flatMap(_.toInt); m <- m.get.flatMap(_.toInt)) yield (n, m))).run == Stream((0, 3), (1, 2), (2, 1), (3, 0)))
+    val x = Var[Nat]
+    val y = Var[Nat]
+    assert((Nat.plus(Var(Nat(2)), Var(Nat(3)), x) &&& x.get.flatMap(_.toInt)).run == Stream(5))
+    assert((Nat.plus(Var(Nat(2)), x, Var(Nat(5))) &&& x.get.flatMap(_.toInt)).run == Stream(3))
+    assert((Nat.plus(x, Var(Nat(2)), Var(Nat(5))) &&& x.get.flatMap(_.toInt)).run == Stream(3))
+    assert((Nat.plus(x, y, Var(Nat(3))) &&& (for (x <- x.get.flatMap(_.toInt); y <- y.get.flatMap(_.toInt)) yield (x, y))).run == Stream((0, 3), (1, 2), (2, 1), (3, 0)))
+    assert((Nat.plus(x, Var(Nat(3)), y) &&& (for (x <- x.get.flatMap(_.toInt); y <- y.get.flatMap(_.toInt)) yield (x, y))).run.take(3) == Stream((0, 3), (1, 4), (2, 5)))
+    assert((Nat.plus(Var(Nat(3)), x, y) &&& (for (x <- x.get.flatMap(_.toInt); y <- y.get.flatMap(_.toInt)) yield (x, y))).run.take(3) == Stream((0, 3), (1, 4), (2, 5)))
   }
 
   test("Nat.lteq") {
@@ -26,6 +52,7 @@ class Example extends FunSuite {
     assert(Nat.lteq(Var(Nat(3)), Var(Nat(3))).run == Stream(()))
     assert(Nat.lteq(Var(Nat(4)), Var(Nat(3))).run == Stream())
     assert((Nat.lteq(n, Var(Nat(3))) &&& n.get.flatMap(_.toInt)).run == Stream(0, 1, 2, 3))
+    assert((Nat.lteq(Var(Nat(1)), n) &&& n.get.flatMap(_.toInt)).run.take(3) == Stream(1, 2, 3))
   }
 
   test("Nat.mod") {
@@ -41,9 +68,9 @@ class Example extends FunSuite {
 
   test("FizzBuzz") {
     def fizzbuzz(n: Var[Nat], s: Var[String]): Logic[Env, Unit] = {
-      val isFizz = Nat.divmod(n, Var(Nat(3)), Var(Nat(Var[Nat])), Var(Nat(0)))
-      val isBuzz = Nat.divmod(n, Var(Nat(5)), Var(Nat(Var[Nat])), Var(Nat(0)))
-      val isFizzBuzz = Nat.divmod(n, Var(Nat(15)), Var(Nat(Var[Nat])), Var(Nat(0)))
+      val isFizz = Nat.divmod(n, Var(Nat(3)), Var(Nat(Var[Nat])), Var(Nat()))
+      val isBuzz = Nat.divmod(n, Var(Nat(5)), Var(Nat(Var[Nat])), Var(Nat()))
+      val isFizzBuzz = Nat.divmod(n, Var(Nat(15)), Var(Nat(Var[Nat])), Var(Nat()))
       (s === Var("FizzBuzz") &&& isFizzBuzz) ||| (s === Var("Fizz") &&& isFizz &&& !isFizzBuzz) ||| (s === Var("Buzz") &&& isBuzz &&& !isFizzBuzz)
     }
     val s = Var[String]

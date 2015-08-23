@@ -1,13 +1,13 @@
 package logical
 
-import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 sealed trait Var[A] { self =>
 
   import Var._
 
   def ===(that: Var[A])(implicit A: Unify[A]): Logic[Env, Unit] = {
-    def set(key: String, value: A): Logic[Env, Unit] =
+    def set(key: Int, value: A): Logic[Env, Unit] =
       Logic.get.flatMap(env => env.get(key).fold(Logic.put(env.set(key, value)))(v => A.unify(v.asInstanceOf[A], value)))
     (this, that) match {
       case (Bound(x), Bound(y)) => A.unify(x, y)
@@ -30,11 +30,13 @@ sealed trait Var[A] { self =>
 
 object Var {
 
-  private case class Unbound[A](name: String) extends Var[A]
+  private case class Unbound[A](id: Int) extends Var[A]
 
   private case class Bound[A](value: A) extends Var[A]
 
-  def apply[A]: Var[A] = Unbound(UUID.randomUUID.toString)
+  private val counter: AtomicInteger = new AtomicInteger
+
+  def apply[A]: Var[A] = Unbound(counter.getAndIncrement)
 
   def apply[A](value: A): Var[A] = Bound(value)
 
