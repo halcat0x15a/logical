@@ -39,7 +39,7 @@ object Cons {
   def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Env, Unit] = {
     val xh, zh = Var[A]
     val xt, zt = Var[Cons[A]]
-    (xs === Var(Empty[A]) &&& ys === zs) ||| (xs === Var(Cell(xh, xt)) &&& zs === Var(Cell(zh, zt)) &&& xh === zh &&& append(xt, ys, zt))
+    xs === Var(Empty[A]) &&& ys === zs ||| xs === Var(Cell(xh, xt)) &&& zs === Var(Cell(zh, zt)) &&& xh === zh &&& append(xt, ys, zt)
   }
 
   def size[A: Unify](cons: Var[Cons[A]], n: Var[Nat]): Logic[Env, Unit] = {
@@ -74,13 +74,6 @@ object Cons {
     val yt = Var[Cons[A]]
     val m = Var[Nat]
     n === Var(Nat()) &&& ys === Var(Empty[A]) ||| n === Var(Nat(m)) &&& xs === Var(Cell(h, xt)) &&& (ys === Var(Cell(h, yt)) &&& combinations(m, xt, yt) ||| combinations(n, xt, ys))
-  }
-
-  def subtract[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Env, Unit] = {
-    val h = Var[A]
-    val xt = Var[Cons[A]]
-    val zt = Var[Cons[A]]
-    xs === Var(Empty[A]) &&& zs === Var(Empty[A]) ||| xs === Var(Cell(h, xt)) &&& (contains(h, ys) &&& subtract(xt, ys, zs) ||| zs === Var(Cell(h, zt)) &&& subtract(xt, ys, zt))
   }
 
   implicit def unify[A: Unify]: Unify[Cons[A]] =

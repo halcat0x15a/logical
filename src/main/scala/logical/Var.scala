@@ -1,21 +1,18 @@
 package logical
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 sealed trait Var[A] { self =>
 
   import Var._
 
-  def ===(that: Var[A])(implicit A: Unify[A]): Logic[Env, Unit] = {
-    def set(key: Int, value: A): Logic[Env, Unit] =
-      Logic.get.flatMap(env => env.get(key).fold(Logic.put(env.set(key, value)))(v => A.unify(v.asInstanceOf[A], value)))
+  def ===(that: Var[A])(implicit A: Unify[A]): Logic[Env, Unit] =
     (this, that) match {
       case (Bound(x), Bound(y)) => A.unify(x, y)
-      case (Unbound(key), Bound(value)) => set(key, value)
-      case (Bound(value), Unbound(key)) => set(key, value)
-      case (Unbound(x), Unbound(y)) => Logic.get.flatMap(env => Logic.put(env.add(Set(x, y))))
+      case (Unbound(key), Bound(value)) => Env.put(key, value)
+      case (Bound(value), Unbound(key)) => Env.put(key, value)
+      case (Unbound(x), Unbound(y)) => Env.add(Set(x, y))
     }
-  }
 
   def get: Logic[Env, A] =
     new Logic[Env, A] {
@@ -30,11 +27,11 @@ sealed trait Var[A] { self =>
 
 object Var {
 
-  private case class Unbound[A](id: Int) extends Var[A]
+  private case class Unbound[A](id: Long) extends Var[A]
 
   private case class Bound[A](value: A) extends Var[A]
 
-  private val counter: AtomicInteger = new AtomicInteger
+  private val counter: AtomicLong = new AtomicLong
 
   def apply[A]: Var[A] = Unbound(counter.getAndIncrement)
 

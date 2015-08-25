@@ -12,16 +12,6 @@ sealed trait Nat {
       case (Succ(x), Succ(y)) => x === y
     }
 
-  def toInt: Logic[Env, Int] =
-    this match {
-      case Zero => Logic.succeed(0)
-      case Succ(n) =>
-        for {
-          n <- n.get
-          n <- n.toInt
-        } yield n + 1
-    }
-
 }
 
 object Nat {
@@ -40,28 +30,27 @@ object Nat {
     else
       Succ(Var(apply(n - 1)))
 
-  def nat(n: Var[Nat]): Logic[Env, Unit] = {
-    val m = Var[Nat]
-    n === Var(Zero) ||| n === Var(Succ(m)) &&& nat(m)
-  }
-
   def lteq(x: Var[Nat], y: Var[Nat]): Logic[Env, Unit] = {
     val px = Var[Nat]
     val py = Var[Nat]
-    x === Var(Zero) &&& (y === Var(Zero) ||| y === Var(Succ(py)) &&& lteq(x, py)) ||| (x === Var(Succ(px)) &&& y === Var(Succ(py)) &&& lteq(px, py))
+    x === Var(Zero) ||| x === Var(Succ(px)) &&& y === Var(Succ(py)) &&& lteq(px, py)
   }
 
   def plus(x: Var[Nat], y: Var[Nat], z: Var[Nat]): Logic[Env, Unit] = {
     val px = Var[Nat]
-    val py = Var[Nat]
     val pz = Var[Nat]
-    x === Var(Zero) &&& (y === Var(Zero) &&& z === Var(Zero) ||| y === Var(Succ(py)) &&& z === Var(Succ(pz)) &&& plus(x, py, pz)) ||| (x === Var(Succ(px)) &&& z === Var(Succ(pz)) &&& plus(px, y, pz))
+    x === Var(Zero) &&& y === z ||| x === Var(Succ(px)) &&& z === Var(Succ(pz)) &&& plus(px, y, pz)
   }
 
   def divmod(x: Var[Nat], y: Var[Nat], q: Var[Nat], r: Var[Nat]): Logic[Env, Unit] = {
     val z = Var[Nat]
     val pq = Var[Nat]
-    (lteq(Var(Succ(x)), y) &&& q === Var(Zero) &&& r === x) ||| (plus(z, y, x) &&& q === Var(Succ(pq)) &&& divmod(z, y, pq, r))
+    lteq(Var(Succ(x)), y) &&& q === Var(Zero) &&& r === x ||| plus(z, y, x) &&& q === Var(Succ(pq)) &&& divmod(z, y, pq, r)
+  }
+
+  def toInt(n: Var[Nat]): Logic[Env, Int] = {
+    val m = Var[Nat]
+    n === Var(Zero) &&& Logic.succeed(0) ||| n === Var(Succ(m)) &&& toInt(m).map(_ + 1)
   }
 
   implicit val unify: Unify[Nat] =

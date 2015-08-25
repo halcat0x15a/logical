@@ -9,9 +9,8 @@ class Poker extends FunSuite {
     def getString: Logic[Env, String] =
       for {
         s <- suit.get
-        n <- n.get
-        n <- n.toInt
-      } yield s"$s$n"
+        n <- Nat.toInt(n)
+      } yield s"$s($n)"
 
   }
 
