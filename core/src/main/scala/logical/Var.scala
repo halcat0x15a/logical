@@ -11,7 +11,7 @@ sealed trait Var[A] { self =>
       case (Bound(x), Bound(y)) => A.unify(x, y)
       case (Unbound(key), Bound(value)) => Env.put(key, value)
       case (Bound(value), Unbound(key)) => Env.put(key, value)
-      case (Unbound(x), Unbound(y)) => Env.add(Set(x, y))
+      case (Unbound(x), Unbound(y)) => Env.add[A](x, y)
     }
 
   def get: Logic[Env, A] =

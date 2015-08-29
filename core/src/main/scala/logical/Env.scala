@@ -17,10 +17,13 @@ case class Env(keySet: Set[Set[Long]], valueMap: LongMap[Any]) {
 
 object Env {
 
-  def add(keys: Set[Long]): Logic[Env, Unit] =
+  def add[A](x: Long, y: Long)(implicit A: Unify[A]): Logic[Env, Unit] =
     new Logic[Env, Unit] {
       def apply(env: Env): Stream[(Env, Unit)] =
-        Stream((env.add(keys), ()))
+        (env.get(x), env.get(y)) match {
+          case (Some(x), Some(y)) => A.unify(x.asInstanceOf[A], y.asInstanceOf[A])(env)
+          case _ => Stream((env.add(Set(x, y)), ()))
+        }
     }
 
   def put[A](key: Long, value: A)(implicit A: Unify[A]): Logic[Env, Unit] =

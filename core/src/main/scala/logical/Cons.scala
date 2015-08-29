@@ -12,17 +12,6 @@ sealed trait Cons[A] {
       case (Cell(x, xs), Cell(y, ys)) => x === y &&& xs === ys
     }
 
-  def toList(implicit A: Unify[A]): Logic[Env, List[A]] =
-    this match {
-      case Empty() => Logic.succeed(List.empty)
-      case Cell(head, tail) =>
-        for {
-          head <- head.get
-          cons <- tail.get
-          tail <- cons.toList
-        } yield head :: tail
-    }
-
 }
 
 object Cons {
@@ -35,6 +24,12 @@ object Cons {
     values.foldRight(Empty(): Cons[A])((value, acc) => Cell(value, Var(acc)))
 
   def fromList[A](list: List[A]): Cons[A] = apply(list.map(Var(_)): _*)
+
+  def toList[A: Unify](cons: Var[Cons[A]]): Logic[Env, List[A]] = {
+    val head = Var[A]
+    val tail = Var[Cons[A]]
+    cons === Var(Empty()) &&& Logic.succeed(List.empty[A]) ||| cons === Var(Cell(head, tail)) &&& toList(tail).flatMap(t => head.get.map(h => h :: t))
+  }
 
   def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Env, Unit] = {
     val xh, zh = Var[A]
@@ -57,8 +52,8 @@ object Cons {
   def permutations[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]]): Logic[Env, Unit] = {
     val h = Var[A]
     val t = Var[Cons[A]]
-    val rest = Var[Cons[A]]
-    xs === Var(Empty[A]) &&& ys === Var(Empty[A]) ||| ys === Var(Cell(h, t)) &&& select(h, xs, rest) &&& permutations(rest, t)
+    val zs = Var[Cons[A]]
+    xs === Var(Empty[A]) &&& ys === Var(Empty[A]) ||| ys === Var(Cell(h, t)) &&& select(h, xs, zs) &&& permutations(zs, t)
   }
 
   def select[A: Unify](x: Var[A], xs: Var[Cons[A]], ys: Var[Cons[A]]): Logic[Env, Unit] = {

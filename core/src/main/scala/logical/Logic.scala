@@ -32,8 +32,7 @@ trait Logic[S, A] { self =>
 
   def |||(that: => Logic[S, A]): Logic[S, A] =
     new Logic[S, A] {
-      def apply(s: S): Stream[(S, A)] =
-        self.apply(s).append(that.apply(s))
+      def apply(s: S): Stream[(S, A)] = self.apply(s).append(that.apply(s))
     }
 
 }

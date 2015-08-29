@@ -30,6 +30,11 @@ object Nat {
     else
       Succ(Var(apply(n - 1)))
 
+  def nat(n: Var[Nat]): Logic[Env, Unit] = {
+    val m = Var[Nat]
+    n === Var(Zero) ||| n === Var(Succ(m)) &&& nat(m)
+  }
+
   def lteq(x: Var[Nat], y: Var[Nat]): Logic[Env, Unit] = {
     val px = Var[Nat]
     val py = Var[Nat]
