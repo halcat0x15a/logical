@@ -14,8 +14,9 @@ object Card {
   def toString(card: Card): Logic[Env, String] =
     for {
       s <- card.suit.get
-      n <- Nat.toInt(card.number)
-    } yield s"$s($n)"
+      n <- card.number.get
+      i <- n.toInt
+    } yield s"$s($i)"
 
   def hand(cards: Var[Cons[Card]]): Logic[Env, Unit] =
     Cons.combinations(Var(Nat(5)), Var(values), cards)

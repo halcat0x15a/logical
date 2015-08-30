@@ -39,6 +39,26 @@ trait Logic[S, A] { self =>
 
 object Logic {
 
+  private case class Cut[S, A](self: Logic[S, A]) extends Logic[S, A] {
+
+    def apply(s: S): Stream[(S, A)] = self.apply(s)
+
+    override def map[B](f: A => B): Logic[S, B] = Cut(self.map(f))
+
+    override def flatMap[B](f: A => Logic[S, B]): Logic[S, B] = Cut(self.flatMap(f))
+
+    override def |||(that: => Logic[S, A]): Logic[S, A] =
+      Cut(new Logic[S, A] {
+        def apply(s: S): Stream[(S, A)] = {
+          val r = self.apply(s)
+          if (r.isEmpty) that.apply(s) else r
+        }
+      })
+
+  }
+
+  def cut[S, A](logic: Logic[S, A]): Logic[S, A] = Cut(logic)
+
   def succeed[S, A](value: A): Logic[S, A] =
     new Logic[S, A] {
       def apply(s: S): Stream[(S, A)] = Stream((s, value))

@@ -15,7 +15,7 @@ object Poker {
     val fullHouse = hand === Var(FullHouse) &&& Card.fullHouse(cards)
     val fourOfAKind = hand === Var(FourOfAKind) &&& Card.fourOfAKind(cards)
     val straightFlush = hand === Var(StraightFlush) &&& Card.straightFlush(cards)
-    Card.hand(cards) &&& (onePair/* ||| twoPairs ||| threeOfAKind ||| straight ||| flush ||| fullHouse ||| fourOfAKind ||| straightFlush*/)
+    Card.hand(cards) &&& (onePair ||| twoPairs ||| threeOfAKind ||| straight ||| flush ||| fullHouse ||| fourOfAKind ||| straightFlush)
   }
 
   def read(in: String): List[Card] =

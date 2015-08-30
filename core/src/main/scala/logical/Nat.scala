@@ -12,6 +12,12 @@ sealed trait Nat {
       case (Succ(x), Succ(y)) => x === y
     }
 
+  def toInt: Logic[Env, Int] =
+    this match {
+      case Zero => Logic.succeed(0)
+      case Succ(n) => n.get.flatMap(_.toInt).map(_ + 1)
+      }
+
 }
 
 object Nat {
@@ -51,11 +57,6 @@ object Nat {
     val z = Var[Nat]
     val pq = Var[Nat]
     lteq(Var(Succ(x)), y) &&& q === Var(Zero) &&& r === x ||| plus(z, y, x) &&& q === Var(Succ(pq)) &&& divmod(z, y, pq, r)
-  }
-
-  def toInt(n: Var[Nat]): Logic[Env, Int] = {
-    val m = Var[Nat]
-    n === Var(Zero) &&& Logic.succeed(0) ||| n === Var(Succ(m)) &&& toInt(m).map(_ + 1)
   }
 
   implicit val unify: Unify[Nat] =
