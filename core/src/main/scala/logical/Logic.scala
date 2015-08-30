@@ -79,7 +79,10 @@ object Logic {
       def apply(s: S): Stream[(S, Unit)] = Stream((state, ()))
     }
 
-  def sequence[S, A](logs: List[Logic[S, A]]): Logic[S, List[A]] =
-    logs.foldRight(succeed[S, List[A]](Nil))((log, acc) => for (as <- acc; a <- log) yield a :: as)
+  implicit def monad[S]: kits.Monad[({ type F[A] = Logic[S, A] })#F] =
+    new kits.Monad[({ type F[A] = Logic[S, A] })#F] {
+      def pure[A](a: A): Logic[S, A] = succeed(a)
+      def flatMap[A, B](fa: Logic[S,A])(f: A => Logic[S,B]): Logic[S,B] = fa.flatMap(f)
+    }
 
 }

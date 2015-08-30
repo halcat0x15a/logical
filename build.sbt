@@ -1,10 +1,12 @@
 lazy val commonSettings = Seq(
+  organization := "org.example",
+  version := "0.1",
   scalaVersion := "2.11.7",
   libraryDependencies ++= Seq(
-    "org.scalatest" %% "scalatest" % "2.2.5" % "test",
-    "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
+    "org.halcat" %% "kits" % "0.4.0",
+    "org.scalatest" %% "scalatest" % "2.2.5" % "test"
   ),
-  scalacOptions += "-deprecation"
+  scalacOptions ++= Seq("-feature", "-deprecation")
 )
 
 lazy val root = project in file(".") aggregate (core, example)

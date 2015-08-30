@@ -12,6 +12,17 @@ sealed trait Cons[A] {
       case (Cell(x, xs), Cell(y, ys)) => x === y &&& xs === ys
     }
 
+  def toList(implicit A: Unify[A]): Logic[Env, List[A]] =
+    this match {
+      case Empty() => Logic.succeed(Nil)
+      case Cell(head, tail) =>
+        for {
+          x <- head.get
+          cons <- tail.get
+          xs <- cons.toList
+        } yield x :: xs
+    }
+
 }
 
 object Cons {
@@ -20,55 +31,48 @@ object Cons {
 
   private case class Cell[A](head: Var[A], tail: Var[Cons[A]]) extends Cons[A]
 
-  def apply[A](values: Var[A]*): Cons[A] =
-    values.foldRight(Empty(): Cons[A])((value, acc) => Cell(value, Var(acc)))
+  def apply[A]: Cons[A] = Empty[A]
 
-  def fromList[A](list: List[A]): Cons[A] = apply(list.map(Var(_)): _*)
+  def apply[A](head: Var[A], tail: Var[Cons[A]]): Cons[A] = Cell(head, tail)
 
-  def toList[A: Unify](cons: Var[Cons[A]]): Logic[Env, List[A]] = {
-    val head = Var[A]
-    val tail = Var[Cons[A]]
-    cons === Var(Empty()) &&& Logic.succeed(List.empty[A]) ||| cons === Var(Cell(head, tail)) &&& toList(tail).flatMap(t => head.get.map(h => h :: t))
-  }
+  def apply[A](values: List[Var[A]]): Cons[A] =
+    values.foldRight(Empty(): Cons[A])((value, acc) => Cell(value, acc))
 
   def append[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]], zs: Var[Cons[A]]): Logic[Env, Unit] = {
-    val xh, zh = Var[A]
-    val xt, zt = Var[Cons[A]]
-    xs === Var(Empty[A]) &&& ys === zs ||| xs === Var(Cell(xh, xt)) &&& zs === Var(Cell(zh, zt)) &&& xh === zh &&& append(xt, ys, zt)
+    val h = Var[A]
+    val t, r = Var[Cons[A]]
+    xs === Empty[A] &&& ys === zs ||| xs === Cell(h, t) &&& zs === Cell(h, r) &&& append(t, ys, r)
   }
 
-  def size[A: Unify](cons: Var[Cons[A]], n: Var[Nat]): Logic[Env, Unit] = {
+  def size[A: Unify](xs: Var[Cons[A]], n: Var[Nat]): Logic[Env, Unit] = {
     val t = Var[Cons[A]]
     val m = Var[Nat]
-    cons === Var(Empty[A]) &&& n === Var(Nat()) ||| cons === Var(Cell(Var[A], t)) &&& n === Var(Nat(m)) &&& size(t, m)
+    xs === Empty[A] &&& n === Nat() ||| xs === Cell(Var[A], t) &&& n === Nat(m) &&& size(t, m)
   }
 
   def contains[A: Unify](x: Var[A], xs: Var[Cons[A]]): Logic[Env, Unit] = {
     val h = Var[A]
     val t = Var[Cons[A]]
-    xs === Var(Cell(h, t)) &&& (x === h ||| contains(x, t))
+    xs === Cell(h, t) &&& (x === h ||| contains(x, t))
   }
 
   def permutations[A: Unify](xs: Var[Cons[A]], ys: Var[Cons[A]]): Logic[Env, Unit] = {
     val h = Var[A]
-    val t = Var[Cons[A]]
-    val zs = Var[Cons[A]]
-    xs === Var(Empty[A]) &&& ys === Var(Empty[A]) ||| ys === Var(Cell(h, t)) &&& select(h, xs, zs) &&& permutations(zs, t)
+    val t, r = Var[Cons[A]]
+    xs === Empty[A] &&& ys === Empty[A] ||| ys === Cell(h, t) &&& select(h, xs, r) &&& permutations(r, t)
   }
 
   def select[A: Unify](x: Var[A], xs: Var[Cons[A]], ys: Var[Cons[A]]): Logic[Env, Unit] = {
     val h = Var[A]
-    val xt = Var[Cons[A]]
-    val yt = Var[Cons[A]]
-    xs === Var(Cell(x, ys)) ||| xs === Var(Cell(h, xt)) &&& ys === Var(Cell(h, yt)) &&& select(x, xt, yt)
+    val t, r = Var[Cons[A]]
+    xs === Cell(x, ys) ||| xs === Cell(h, t) &&& ys === Cell(h, r) &&& select(x, t, r)
   }
 
   def combinations[A: Unify](n: Var[Nat], xs: Var[Cons[A]], ys: Var[Cons[A]]): Logic[Env, Unit] = {
     val h = Var[A]
-    val xt = Var[Cons[A]]
-    val yt = Var[Cons[A]]
+    val t, r = Var[Cons[A]]
     val m = Var[Nat]
-    n === Var(Nat()) &&& ys === Var(Empty[A]) ||| n === Var(Nat(m)) &&& xs === Var(Cell(h, xt)) &&& (ys === Var(Cell(h, yt)) &&& combinations(m, xt, yt) ||| combinations(n, xt, ys))
+    n === Nat() &&& ys === Empty[A] ||| n === Nat(m) &&& xs === Cell(h, t) &&& (ys === Cell(h, r) &&& combinations(m, t, r) ||| combinations(n, t, ys))
   }
 
   implicit def unify[A: Unify]: Unify[Cons[A]] =
