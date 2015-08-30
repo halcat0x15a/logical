@@ -2,30 +2,19 @@ package logical
 
 package poker
 
-object Poker extends App {
+import scala.util.parsing.combinator.RegexParsers
 
-  val card = """([HDCS?])(\d+|\?)""".r
+object Poker extends App with RegexParsers {
 
-  val input = card.findAllMatchIn(args(0)).map {
-    case card(s, n) =>
-      val suit: Var[Suit] =
-        s match {
-          case "H" => Heart
-          case "D" => Diamond
-          case "C" => Club
-          case "S" => Spade
-          case _ => Var[Suit]
-        }
-      val number: Var[Nat] =
-        if (n == "?")
-          Var[Nat]
-        else
-          Nat(n.toInt)
-      Card(suit, number)
-  }
+  val suit = 'H' ^^^ Var(Heart) | 'D' ^^^ Var(Diamond) | 'C' ^^^ Var(Club) | 'S' ^^^ Var(Spade) | '?' ^^ (_ => Var[Suit])
+  val number = """\d+""".r ^^ (n => Var(Nat(n.toInt))) | '?' ^^ (_ => Var[Nat])
+  val card = suit ~ number ^^ { case s ~ n => Card(s, n) }
 
   val hand = Var[Hand]
-  val cards = Cons(input.toList)
+  val cards = parseAll(repN(5, card), args(0)) match {
+    case Success(result, _) => Cons(result)
+    case failure: NoSuccess => sys.error(failure.msg)
+  }
 
   val onePair = Logic.cut(hand === OnePair &&& Card.onePair(cards))
   val twoPairs = Logic.cut(hand === TwoPairs &&& Card.twoPairs(cards))
@@ -36,21 +25,21 @@ object Poker extends App {
   val fourOfAKind = Logic.cut(hand === FourOfAKind &&& Card.fourOfAKind(cards))
   val straightFlush = Logic.cut(hand === StraightFlush &&& Card.straightFlush(cards))
 
-  val output =
+  val show =
     for {
-      h <- hand.get
-      cs <- cards.get
-      l <- cs.toList
-      ss <- kits.Traverse.traverse[List, ({ type F[A] = Logic[Env, A] })#F, Card, String](l) { c =>
+      hand <- hand.get
+      cons <- cards.get
+      cards <- cons.toList
+      strs <- kits.Traverse.traverse(cards) { card =>
         for {
-          s <- c.suit.get
-          n <- c.number.get
-          i <- n.toInt
-        } yield s"${s.toString.head}$i"
+          suit <- card.suit.get
+          num <- card.number.get
+          int <- num.toInt
+        } yield s"$suit($int)"
       }
-    } yield s"""$h,${ss.mkString}"""
-  
-  val app = Card.hand(cards) &&& (straightFlush ||| fourOfAKind ||| fullHouse ||| flush ||| straight ||| threeOfAKind ||| twoPairs ||| onePair) &&& output
+    } yield s"""$hand,${strs.mkString(",")}"""
+
+  val app = Card.hand(cards) &&& (straightFlush ||| fourOfAKind ||| fullHouse ||| flush ||| straight ||| threeOfAKind ||| twoPairs ||| onePair) &&& show
 
   app.run.foreach(println)
 

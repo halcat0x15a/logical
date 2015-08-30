@@ -2,16 +2,16 @@ package logical
 
 import java.util.concurrent.atomic.AtomicLong
 
-sealed trait Var[A] { self =>
+sealed trait Var[+A] { self =>
 
   import Var._
 
-  def ===(that: Var[A])(implicit A: Unify[A]): Logic[Env, Unit] =
+  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Env, Unit] =
     (this, that) match {
-      case (Bound(x), Bound(y)) => A.unify(x, y)
-      case (Unbound(key), Bound(value)) => Env.put(key, value)
-      case (Bound(value), Unbound(key)) => Env.put(key, value)
-      case (Unbound(x), Unbound(y)) => Env.add[A](x, y)
+      case (Bound(x), Bound(y)) => B.unify(x, y)
+      case (Unbound(key), Bound(value)) => Env.put[B](key, value)
+      case (Bound(value), Unbound(key)) => Env.put[B](key, value)
+      case (Unbound(x), Unbound(y)) => Env.add[B](x, y)
     }
 
   def get: Logic[Env, A] =

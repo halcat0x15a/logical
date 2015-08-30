@@ -6,10 +6,8 @@ case class Card(suit: Var[Suit], number: Var[Nat])
 
 object Card {
 
-  def apply(): Card = Card(Var[Suit], Var[Nat])
-
   def values: Cons[Card] =
-    Cons(Suit.values.flatMap(s => (1 to 13).map(n => Card(s, Nat(n)))))
+    Cons(List(Heart, Diamond, Club, Spade).flatMap(s => (1 to 13).map(n => Card(s, Nat(n)))))
 
   def hand(cards: Var[Cons[Card]]): Logic[Env, Unit] =
     Cons.combinations(Nat(5), values, cards)
