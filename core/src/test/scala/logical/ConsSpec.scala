@@ -7,8 +7,7 @@ class ConsSpec extends FunSpec {
   describe("Cons") {
 
     it("append") {
-      val xs = Var[Cons[Int]]
-      val ys = Var[Cons[Int]]
+      val xs, ys = Var[Cons[Int]]
       assert((Cons.append(Cons(List(1, 2, 3)), Cons(List(4, 5)), xs) &&& xs.get.flatMap(_.toList)).run == Stream(List(1, 2, 3, 4, 5)))
       assert((Cons.append(Cons(List(1, 2, 3)), xs, Cons(List(1, 2, 3, 4, 5))) &&& xs.get.flatMap(_.toList)).run == Stream(List(4, 5)))
       assert((Cons.append(xs, ys, Cons(List(1, 2, 3))) &&& (for (xs <- xs.get.flatMap(_.toList); ys <- ys.get.flatMap(_.toList)) yield (xs, ys))).run == Stream((Nil, List(1, 2, 3)), (List(1), List(2, 3)), (List(1, 2), List(3)), (List(1, 2, 3), Nil)))
