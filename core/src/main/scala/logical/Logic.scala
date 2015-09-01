@@ -1,57 +1,47 @@
 package logical
 
-trait Logic[S, +A] { self =>
+trait Logic[+A] { self =>
 
-  def apply(s: S): Stream[(S, A)]
+  def apply(env: Env): Stream[(Env, A)]
 
-  def run(implicit s: S): Stream[A] =
-    apply(s).map { case (_, value) => value }
+  def run(implicit env: Env): Stream[A] = apply(env).map(_._2)
 
-  def map[B](f: A => B): Logic[S, B] =
-    new Logic[S, B] {
-      def apply(s: S): Stream[(S, B)] =
-        self.apply(s).map { case (s, a) => (s, f(a)) }
+  def map[B](f: A => B): Logic[B] =
+    new Logic[B] {
+      def apply(env: Env): Stream[(Env, B)] =
+        self.apply(env).map(pair => pair.copy(_2 = f(pair._2)))
     }
 
-  def flatMap[B](f: A => Logic[S, B]): Logic[S, B] =
-    new Logic[S, B] {
-      def apply(s: S): Stream[(S, B)] =
-        self.apply(s).flatMap { case (s, a) => f(a).apply(s) }
+  def flatMap[B](f: A => Logic[B]): Logic[B] =
+    new Logic[B] {
+      def apply(env: Env): Stream[(Env, B)] =
+        self.apply(env).flatMap(pair => f(pair._2).apply(pair._1))
     }
 
-  def unary_! : Logic[S, Unit] =
-    new Logic[S, Unit] {
-      def apply(s: S): Stream[(S, Unit)] =
-        if (self.apply(s).isEmpty)
-          Stream((s, ()))
-        else
-          Stream.empty
-    }
+  def &&&[B](that: => Logic[B]): Logic[B] = flatMap(_ => that)
 
-  def &&&[B](that: => Logic[S, B]): Logic[S, B] = flatMap(_ => that)
-
-  def |||[B >: A](that: => Logic[S, B]): Logic[S, B] =
-    new Logic[S, B] {
-      def apply(s: S): Stream[(S, B)] = self.apply(s).append(that.apply(s))
+  def |||[B >: A](that: => Logic[B]): Logic[B] =
+    new Logic[B] {
+      def apply(env: Env): Stream[(Env, B)] = self.apply(env).append(that.apply(env))
     }
 
 }
 
 object Logic {
 
-  private case class Cut[S, A](self: Logic[S, A]) extends Logic[S, A] {
+  private case class Cut[A](self: Logic[A]) extends Logic[A] {
 
-    def apply(s: S): Stream[(S, A)] = self.apply(s)
+    def apply(env: Env): Stream[(Env, A)] = self.apply(env)
 
-    override def map[B](f: A => B): Logic[S, B] = Cut(self.map(f))
+    override def map[B](f: A => B): Logic[B] = Cut(self.map(f))
 
-    override def flatMap[B](f: A => Logic[S, B]): Logic[S, B] = Cut(self.flatMap(f))
+    override def flatMap[B](f: A => Logic[B]): Logic[B] = Cut(self.flatMap(f))
 
-    override def |||[B >: A](that: => Logic[S, B]): Logic[S, B] = {
-      val logic = new Logic[S, B] {
-        def apply(s: S): Stream[(S, B)] = {
-          val r = self.apply(s)
-          if (r.isEmpty) that.apply(s) else r
+    override def |||[B >: A](that: => Logic[B]): Logic[B] = {
+      val logic = new Logic[B] {
+        def apply(env: Env): Stream[(Env, B)] = {
+          val r = self.apply(env)
+          if (r.isEmpty) that.apply(env) else r
         }
       }
       Cut(logic)
@@ -59,32 +49,22 @@ object Logic {
 
   }
 
-  def cut[S, A](logic: Logic[S, A]): Logic[S, A] = Cut(logic)
+  def cut[A](logic: Logic[A]): Logic[A] = Cut(logic)
 
-  def succeed[S, A](value: A): Logic[S, A] =
-    new Logic[S, A] {
-      def apply(s: S): Stream[(S, A)] = Stream((s, value))
+  def succeed[A](value: A): Logic[A] =
+    new Logic[A] {
+      def apply(env: Env): Stream[(Env, A)] = Stream((env, value))
     }
 
-  def fail[S, A]: Logic[S, A] =
-    new Logic[S, A] {
-      def apply(s: S): Stream[(S, A)] = Stream.empty
+  def fail[A]: Logic[A] =
+    new Logic[A] {
+      def apply(env: Env): Stream[(Env, A)] = Stream.empty
     }
 
-  def get[S]: Logic[S, S] =
-    new Logic[S, S] {
-      def apply(s: S): Stream[(S, S)] = Stream((s, s))
-    }
-
-  def put[S](state: S): Logic[S, Unit] =
-    new Logic[S, Unit] {
-      def apply(s: S): Stream[(S, Unit)] = Stream((state, ()))
-    }
-
-  implicit def monad[S]: kits.Monad[({ type F[A] = Logic[S, A] })#F] =
-    new kits.Monad[({ type F[A] = Logic[S, A] })#F] {
-      def pure[A](a: A): Logic[S, A] = succeed(a)
-      def flatMap[A, B](fa: Logic[S,A])(f: A => Logic[S,B]): Logic[S,B] = fa.flatMap(f)
+  implicit def monad[S]: kits.Monad[Logic] =
+    new kits.Monad[({ type F[A] = Logic[A] })#F] {
+      def pure[A](a: A): Logic[A] = succeed(a)
+      def flatMap[A, B](fa: Logic[A])(f: A => Logic[B]): Logic[B] = fa.flatMap(f)
     }
 
 }

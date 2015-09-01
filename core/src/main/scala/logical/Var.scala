@@ -6,7 +6,7 @@ sealed trait Var[+A] { self =>
 
   import Var._
 
-  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Env, Unit] =
+  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit] =
     (this, that) match {
       case (Bound(x), Bound(y)) => B.unify(x, y)
       case (Unbound(x), Unbound(y)) => Env.add[B](x, y)
@@ -14,8 +14,8 @@ sealed trait Var[+A] { self =>
       case (Bound(value), Unbound(key)) => Env.put[B](key, value)
     }
 
-  def get: Logic[Env, A] =
-    new Logic[Env, A] {
+  def get: Logic[A] =
+    new Logic[A] {
       def apply(env: Env): Stream[(Env, A)] =
         self match {
           case Bound(value) => Stream((env, value))
@@ -39,7 +39,7 @@ object Var {
 
   implicit def unify[A](implicit A: Unify[A]): Unify[Var[A]] =
     new Unify[Var[A]] {
-      def unify(x: Var[A], y: Var[A]): Logic[Env, Unit] = x === y
+      def unify(x: Var[A], y: Var[A]): Logic[Unit] = x === y
     }
 
 }

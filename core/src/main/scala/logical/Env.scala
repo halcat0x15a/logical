@@ -17,8 +17,8 @@ case class Env(keys: LongMap[Long], values: LongMap[Any]) {
 
 object Env {
 
-  def add[A](x: Long, y: Long)(implicit A: Unify[A]): Logic[Env, Unit] =
-    new Logic[Env, Unit] {
+  def add[A](x: Long, y: Long)(implicit A: Unify[A]): Logic[Unit] =
+    new Logic[Unit] {
       def apply(env: Env): Stream[(Env, Unit)] =
         (env.get(x), env.get(y)) match {
           case (Some(x), Some(y)) => A.unify(x.asInstanceOf[A], y.asInstanceOf[A])(env)
@@ -28,8 +28,8 @@ object Env {
         }
     }
 
-  def put[A](key: Long, value: A)(implicit A: Unify[A]): Logic[Env, Unit] =
-    new Logic[Env, Unit] {
+  def put[A](key: Long, value: A)(implicit A: Unify[A]): Logic[Unit] =
+    new Logic[Unit] {
       def apply(env: Env): Stream[(Env, Unit)] =
         env.get(key).fold(Stream((env.put(key, value), ())))(v => A.unify(v.asInstanceOf[A], value)(env))
     }
