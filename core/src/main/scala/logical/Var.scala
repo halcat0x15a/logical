@@ -9,9 +9,9 @@ sealed trait Var[+A] { self =>
   def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Env, Unit] =
     (this, that) match {
       case (Bound(x), Bound(y)) => B.unify(x, y)
+      case (Unbound(x), Unbound(y)) => Env.add[B](x, y)
       case (Unbound(key), Bound(value)) => Env.put[B](key, value)
       case (Bound(value), Unbound(key)) => Env.put[B](key, value)
-      case (Unbound(x), Unbound(y)) => Env.add[B](x, y)
     }
 
   def get: Logic[Env, A] =

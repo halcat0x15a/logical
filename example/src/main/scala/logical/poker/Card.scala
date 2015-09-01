@@ -6,7 +6,7 @@ case class Card(suit: Var[Suit], number: Var[Nat])
 
 object Card {
 
-  def values: Cons[Card] =
+  val values: Cons[Card] =
     Cons(List(Heart, Diamond, Club, Spade).flatMap(s => (1 to 13).map(n => Card(s, Nat(n)))))
 
   def hand(cards: Var[Cons[Card]]): Logic[Env, Unit] =
@@ -29,7 +29,7 @@ object Card {
 
   def straight(cards: Var[Cons[Card]]): Logic[Env, Unit] = {
     val n = Var[Nat]
-    cards === Cons(List.iterate(Card(Var[Suit], n), 5)(card => Card(Var[Suit], Nat(card.number))))
+    Cons.permutations(cards, Cons(List.iterate(Card(Var[Suit], n), 5)(card => Card(Var[Suit], Nat(card.number)))))
   }
 
   def flush(cards: Var[Cons[Card]]): Logic[Env, Unit] = {
