@@ -26,6 +26,8 @@ object Nat {
 
   private case class Succ(n: Var[Nat]) extends Nat
 
+  val numbers: Stream[Nat] = Stream.iterate(Zero: Nat)(Succ(_))
+
   def apply(): Nat = Zero
 
   def apply(n: Var[Nat]): Nat = Succ(n)
@@ -34,7 +36,7 @@ object Nat {
     if (n <= 0)
       Zero
     else
-      Succ(apply(n - 1))
+      numbers(n)
 
   def nat(n: Var[Nat]): Logic[Unit] = {
     val m = Var[Nat]
