@@ -16,10 +16,10 @@ sealed trait Var[+A] { self =>
 
   def get: Logic[A] =
     new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] =
+      def apply(env: Env): Stream[Env] =
         self match {
-          case Bound(value) => Stream((env, value))
-          case Unbound(key) => env.get(key).map(value => (env, value.asInstanceOf[A])).toStream
+          case Bound(value) => Stream(env.copy(value = value))
+          case Unbound(key) => env.get(key).map(value => env.copy(value = value.asInstanceOf[A])).toStream
         }
     }
 
