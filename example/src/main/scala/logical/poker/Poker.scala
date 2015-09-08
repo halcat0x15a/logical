@@ -43,7 +43,7 @@ object Poker extends App with RegexParsers {
   parseAll(repN(5, card), args(0)) match {
     case Success(result, _) =>
       val hands = for {
-        cards <- result.permutations.map(Cons(_)).toStream.par
+        cards <- Stream(Cons(result))
         hand <- hand(cards).run
       } yield hand
       println(hands.groupBy(identity).mapValues(hs => (hs.size.toDouble / hands.size * 10000).toInt.toDouble / 100 + "%"))

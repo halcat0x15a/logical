@@ -2,16 +2,20 @@ package logical
 
 import scala.collection.immutable.LongMap
 
-case class Env(keys: LongMap[Long], values: LongMap[Any]) {
+case class Env(keys: LongMap[Set[Long]], values: LongMap[Any]) {
 
   def add(x: Long, y: Long): Env =
-    copy(keys = keys + (x -> y) + (y -> x))
+    keys.get(x).orElse(keys.get(y)).fold(copy(keys = keys + (x -> Set(x, y)) + (y -> Set(x, y)))) { ks =>
+      val keyset = ks + x + y
+      copy(keys = keyset.foldLeft(keys)((ks, k) => ks + (k -> keyset)))
+    }
 
   def put(key: Long, value: Any): Env =
-    copy(values = values + (key -> value))
+    keys.get(key).fold(copy(values = values + (key -> value))) { ks =>
+      Env(keys = keys -- ks, values = ks.foldLeft(values)((vs, k) => vs + (k -> value)))
+    }
 
-  def get(key: Long): Option[Any] =
-    values.get(key).orElse(keys.get(key).flatMap(values.get))
+  def get(key: Long): Option[Any] = values.get(key)
 
 }
 

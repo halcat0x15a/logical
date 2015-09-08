@@ -2,36 +2,45 @@ package logical
 
 import java.util.concurrent.atomic.AtomicLong
 
-sealed trait Var[+A] { self =>
+sealed abstract class Var[+A] {
 
-  import Var._
+  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit]
+
+  def get: Logic[A]
+
+}
+
+case class Unbound[A](key: Long) extends Var[A] {
 
   def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit] =
-    (this, that) match {
-      case (Bound(x), Bound(y)) => B.unify(x, y)
-      case (Unbound(x), Unbound(y)) => Env.add[B](x, y)
-      case (Unbound(key), Bound(value)) => Env.put[B](key, value)
-      case (Bound(value), Unbound(key)) => Env.put[B](key, value)
+    that match {
+      case Unbound(k) => Env.add[B](key, k)
+      case Bound(v) => Env.put[B](key, v)
     }
 
   def get: Logic[A] =
     new Logic[A] {
       def apply(env: Env): Stream[(Env, A)] =
-        self match {
-          case Bound(value) => Stream((env, value))
-          case Unbound(key) => env.get(key).map(value => (env, value.asInstanceOf[A])).toStream
-        }
+        env.get(key).map(value => (env, value.asInstanceOf[A])).toStream
     }
+
+}
+
+case class Bound[A](value: A) extends Var[A] {
+
+  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit] =
+    that match {
+      case Unbound(k) => Env.put[B](k, value)
+      case Bound(v) => B.unify(value, v)
+    }
+
+  def get: Logic[A] = Logic.succeed(value)
 
 }
 
 object Var {
 
-  private case class Unbound[A](id: Long) extends Var[A]
-
-  private case class Bound[A](value: A) extends Var[A]
-
-  private val counter: AtomicLong = new AtomicLong
+  val counter: AtomicLong = new AtomicLong
 
   def apply[A]: Var[A] = Unbound(counter.getAndIncrement)
 

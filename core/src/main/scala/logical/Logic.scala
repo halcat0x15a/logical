@@ -4,18 +4,18 @@ trait Logic[+A] { self =>
 
   def apply(env: Env): Stream[(Env, A)]
 
-  def run(implicit env: Env): Stream[A] = apply(env).map(_._2)
+  def run(implicit env: Env): Stream[A] = apply(env).map { case (_, value) => value }
 
   def map[B](f: A => B): Logic[B] =
     new Logic[B] {
       def apply(env: Env): Stream[(Env, B)] =
-        self.apply(env).map(pair => pair.copy(_2 = f(pair._2)))
+        self.apply(env).map { case (env, value) => (env, f(value)) }
     }
 
   def flatMap[B](f: A => Logic[B]): Logic[B] =
     new Logic[B] {
       def apply(env: Env): Stream[(Env, B)] =
-        self.apply(env).flatMap(pair => f(pair._2).apply(pair._1))
+        self.apply(env).flatMap { case (env, value) => f(value).apply(env) }
     }
 
   def &&&[B](that: => Logic[B]): Logic[B] = flatMap(_ => that)
