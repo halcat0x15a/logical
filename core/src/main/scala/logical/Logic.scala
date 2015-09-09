@@ -4,7 +4,7 @@ trait Logic[+A] { self =>
 
   def apply(env: Env): Stream[(Env, A)]
 
-  def run(implicit env: Env): Stream[A] = apply(env).map { case (_, value) => value }
+  def run: Stream[A] = apply(Env.empty).map { case (_, value) => value }
 
   def map[B](f: A => B): Logic[B] =
     new Logic[B] {
@@ -27,43 +27,47 @@ trait Logic[+A] { self =>
 
 }
 
+case class Cut[A](self: Logic[A]) extends Logic[A] {
+
+  def apply(env: Env): Stream[(Env, A)] = self.apply(env)
+
+  override def map[B](f: A => B): Logic[B] = Cut(self.map(f))
+
+  override def flatMap[B](f: A => Logic[B]): Logic[B] = Cut(self.flatMap(f))
+
+  override def |||[B >: A](that: => Logic[B]): Logic[B] =
+    Cut(new Logic[B] {
+      def apply(env: Env): Stream[(Env, B)] = {
+        val result = self.apply(env)
+        if (result.isEmpty) that.apply(env) else result
+      }
+    })
+
+}
+
+case class Success[A](value: A) extends Logic[A] {
+
+  def apply(env: Env): Stream[(Env, A)] = Stream((env, value))
+
+}
+
+case object True extends Logic[Unit] {
+
+  def apply(env: Env): Stream[(Env, Unit)] = Stream((env, ()))
+
+}
+
+case object Failure extends Logic[Nothing] {
+
+  def apply(env: Env): Stream[(Env, Nothing)] = Stream.empty
+
+}
+
 object Logic {
 
-  private case class Cut[A](self: Logic[A]) extends Logic[A] {
-
-    def apply(env: Env): Stream[(Env, A)] = self.apply(env)
-
-    override def map[B](f: A => B): Logic[B] = Cut(self.map(f))
-
-    override def flatMap[B](f: A => Logic[B]): Logic[B] = Cut(self.flatMap(f))
-
-    override def |||[B >: A](that: => Logic[B]): Logic[B] = {
-      val logic = new Logic[B] {
-        def apply(env: Env): Stream[(Env, B)] = {
-          val r = self.apply(env)
-          if (r.isEmpty) that.apply(env) else r
-        }
-      }
-      Cut(logic)
-    }
-
-  }
-
-  def cut[A](logic: Logic[A]): Logic[A] = Cut(logic)
-
-  def succeed[A](value: A): Logic[A] =
-    new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] = Stream((env, value))
-    }
-
-  def fail[A]: Logic[A] =
-    new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] = Stream.empty
-    }
-
-  implicit def monad[S]: kits.Monad[Logic] =
-    new kits.Monad[({ type F[A] = Logic[A] })#F] {
-      def pure[A](a: A): Logic[A] = succeed(a)
+  implicit val monad: kits.Monad[Logic] =
+    new kits.Monad[Logic] {
+      def pure[A](a: A): Logic[A] = Success(a)
       def flatMap[A, B](fa: Logic[A])(f: A => Logic[B]): Logic[B] = fa.flatMap(f)
     }
 

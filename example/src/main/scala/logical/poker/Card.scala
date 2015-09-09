@@ -19,7 +19,7 @@ object Card {
 
   def twoPairs(cards: Var[Cons[Card]]): Logic[Unit] = {
     val n, m = Var[Nat]
-    Cons.combinations(Nat(2), cards, Cons(List.fill(2)(Card(Var[Suit], n)))) &&& Cons.combinations(Nat(2), cards, Cons(List.fill(2)(Card(Var[Suit], m)))) &&& Nat.lteq(Nat(n), m)
+    Cons.combinations(Nat(2), cards, Cons(List.fill(2)(Card(Var[Suit], n)))) &&& Cons.combinations(Nat(2), cards, Cons(List.fill(2)(Card(Var[Suit], m)))) &&& Nat.lteq(Succ(n), m)
   }
 
   def threeOfAKind(cards: Var[Cons[Card]]): Logic[Unit] = {
@@ -29,7 +29,7 @@ object Card {
 
   def straight(cards: Var[Cons[Card]]): Logic[Unit] = {
     val n = Var[Nat]
-    Cons.permutations(cards, Cons(List.iterate(Card(Var[Suit], n), 5)(card => Card(Var[Suit], Nat(card.number)))))
+    Cons.permutations(cards, Cons(List.iterate(Card(Var[Suit], n), 5)(card => Card(Var[Suit], Succ(card.number)))))
   }
 
   def flush(cards: Var[Cons[Card]]): Logic[Unit] = {
@@ -40,7 +40,7 @@ object Card {
   def fullHouse(cards: Var[Cons[Card]]): Logic[Unit] = {
     val n = Var[Nat]
     val m = Var[Nat]
-    Cons.combinations(Nat(3), cards, Cons(List.fill(3)(Card(Var[Suit], n)))) &&& Cons.combinations(Nat(2), cards, Cons(List.fill(2)(Card(Var[Suit], m)))) &&& Nat.lteq(Nat(n), m)
+    Cons.combinations(Nat(3), cards, Cons(List.fill(3)(Card(Var[Suit], n)))) &&& Cons.combinations(Nat(2), cards, Cons(List.fill(2)(Card(Var[Suit], m)))) &&& Nat.lteq(Succ(n), m)
   }
 
   def fourOfAKind(cards: Var[Cons[Card]]): Logic[Unit] = {
@@ -49,7 +49,7 @@ object Card {
   }
 
   def straightFlush(cards: Var[Cons[Card]]): Logic[Unit] =
-    cards === Cons(List.iterate(Card(Var[Suit], Var[Nat]), 5)(card => Card(card.suit, Nat(card.number))))
+    cards === Cons(List.iterate(Card(Var[Suit], Var[Nat]), 5)(card => Card(card.suit, Succ(card.number))))
 
   implicit def unify: Unify[Card] =
     new Unify[Card] {

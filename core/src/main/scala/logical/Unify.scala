@@ -1,6 +1,6 @@
 package logical
 
-trait Unify[A] {
+trait Unify[-A] {
 
   def unify(x: A, y: A): Logic[Unit]
 
@@ -12,9 +12,9 @@ object Unify {
     new Unify[A] {
       def unify(x: A, y: A): Logic[Unit] =
         if (x == y)
-          Logic.succeed(())
+          True
         else
-          Logic.fail
+          Failure
     }
 
 }

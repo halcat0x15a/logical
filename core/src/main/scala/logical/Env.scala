@@ -1,43 +1,58 @@
 package logical
 
+import scala.annotation.tailrec
 import scala.collection.immutable.LongMap
 
-case class Env(keys: LongMap[Set[Long]], values: LongMap[Any]) {
+case class Env(keys: LongMap[Long], values: LongMap[Any]) {
 
-  def add(x: Long, y: Long): Env =
-    keys.get(x).orElse(keys.get(y)).fold(copy(keys = keys + (x -> Set(x, y)) + (y -> Set(x, y)))) { ks =>
-      val keyset = ks + x + y
-      copy(keys = keyset.foldLeft(keys)((ks, k) => ks + (k -> keyset)))
+  @tailrec
+  final def add(key1: Long, key2: Long): Env =
+    keys.get(key1) match {
+      case None => copy(keys = keys + (key1 -> key2))
+      case Some(key) => add(key, key2)
     }
 
-  def put(key: Long, value: Any): Env =
-    keys.get(key).fold(copy(values = values + (key -> value))) { ks =>
-      Env(keys = keys -- ks, values = ks.foldLeft(values)((vs, k) => vs + (k -> value)))
+  @tailrec
+  final def put(key: Long, value: Any): Env = {
+    val env = copy(values = values + (key -> value))
+    keys.get(key) match {
+      case Some(key0) => env.copy(keys = keys - key).put(key0, value)
+      case None => env
     }
+  }
 
-  def get(key: Long): Option[Any] = values.get(key)
+  @tailrec
+  final def get(key: Long): Option[Any] =
+    values.get(key) match {
+      case None =>
+        keys.get(key) match {
+          case None => None
+          case Some(key0) => get(key0)
+        }
+      case result => result
+    }
 
 }
 
 object Env {
 
-  def add[A](x: Long, y: Long)(implicit A: Unify[A]): Logic[Unit] =
+  implicit val empty: Env = Env(LongMap.empty, LongMap.empty)
+
+  def add[A](key1: Long, key2: Long)(implicit A: Unify[A]): Logic[Unit] =
     new Logic[Unit] {
       def apply(env: Env): Stream[(Env, Unit)] =
-        (env.get(x), env.get(y)) match {
-          case (Some(x), Some(y)) => A.unify(x.asInstanceOf[A], y.asInstanceOf[A])(env)
-          case (None, Some(value)) => Stream((env.put(x, value), ()))
-          case (Some(value), None) => Stream((env.put(y, value), ()))
-          case (None, None) => Stream((env.add(x, y), ()))
+        (env.get(key1), env.get(key2)) match {
+          case (Some(value1), Some(value2)) => A.unify(value1.asInstanceOf[A], value2.asInstanceOf[A])(env)
+          case (None, Some(value)) => Stream((env.put(key1, value), ()))
+          case (Some(value), None) => Stream((env.put(key2, value), ()))
+          case (None, None) => Stream((env.put(key1, key2), ()))
         }
     }
 
   def put[A](key: Long, value: A)(implicit A: Unify[A]): Logic[Unit] =
     new Logic[Unit] {
       def apply(env: Env): Stream[(Env, Unit)] =
-        env.get(key).fold(Stream((env.put(key, value), ())))(v => A.unify(v.asInstanceOf[A], value)(env))
+        env.get(key).fold(Stream((env.put(key, value), ())))(value0 => A.unify(value0.asInstanceOf[A], value)(env))
     }
-
-  implicit val empty: Env = Env(LongMap.empty, LongMap.empty)
 
 }

@@ -13,14 +13,14 @@ object Poker extends App with RegexParsers {
   def hand(cards: Cons[Card]): Logic[Hand] = {
     val hand = Var[Hand]
     val noPair = hand === NoPair
-    val onePair = Logic.cut(hand === OnePair &&& Card.onePair(cards))
-    val twoPairs = Logic.cut(hand === TwoPairs &&& Card.twoPairs(cards))
-    val threeOfAKind = Logic.cut(hand === ThreeOfAKind &&& Card.threeOfAKind(cards))
-    val straight = Logic.cut(hand === Straight &&& Card.straight(cards))
-    val flush = Logic.cut(hand === Flush &&& Card.flush(cards))
-    val fullHouse = Logic.cut(hand === FullHouse &&& Card.fullHouse(cards))
-    val fourOfAKind = Logic.cut(hand === FourOfAKind &&& Card.fourOfAKind(cards))
-    val straightFlush = Logic.cut(hand === StraightFlush &&& Card.straightFlush(cards))
+    val onePair = Cut(hand === OnePair &&& Card.onePair(cards))
+    val twoPairs = Cut(hand === TwoPairs &&& Card.twoPairs(cards))
+    val threeOfAKind = Cut(hand === ThreeOfAKind &&& Card.threeOfAKind(cards))
+    val straight = Cut(hand === Straight &&& Card.straight(cards))
+    val flush = Cut(hand === Flush &&& Card.flush(cards))
+    val fullHouse = Cut(hand === FullHouse &&& Card.fullHouse(cards))
+    val fourOfAKind = Cut(hand === FourOfAKind &&& Card.fourOfAKind(cards))
+    val straightFlush = Cut(hand === StraightFlush &&& Card.straightFlush(cards))
     val show =
       for {
         hand <- hand.get

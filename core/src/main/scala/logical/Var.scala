@@ -4,39 +4,29 @@ import java.util.concurrent.atomic.AtomicLong
 
 sealed abstract class Var[+A] {
 
-  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit]
+  final def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit] =
+    (this, that) match {
+      case (Bound(value1), Bound(value2)) => B.unify(value1, value2)
+      case (Unbound(key), Bound(value)) => Env.put[B](key, value)
+      case (Bound(value), Unbound(key)) => Env.put[B](key, value)
+      case (Unbound(key1), Unbound(key2)) => Env.add[B](key1, key2)
+    }
 
-  def get: Logic[A]
+  final lazy val get: Logic[A] =
+    this match {
+      case Bound(value) => Success(value)
+      case Unbound(key) =>
+        new Logic[A] {
+          def apply(env: Env): Stream[(Env, A)] =
+            env.get(key).map(value => (env, value.asInstanceOf[A])).toStream
+        }
+    }
 
 }
 
-case class Unbound[A](key: Long) extends Var[A] {
+case class Unbound[A](key: Long) extends Var[A]
 
-  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit] =
-    that match {
-      case Unbound(k) => Env.add[B](key, k)
-      case Bound(v) => Env.put[B](key, v)
-    }
-
-  def get: Logic[A] =
-    new Logic[A] {
-      def apply(env: Env): Stream[(Env, A)] =
-        env.get(key).map(value => (env, value.asInstanceOf[A])).toStream
-    }
-
-}
-
-case class Bound[A](value: A) extends Var[A] {
-
-  def ===[B >: A](that: Var[B])(implicit B: Unify[B]): Logic[Unit] =
-    that match {
-      case Unbound(k) => Env.put[B](k, value)
-      case Bound(v) => B.unify(value, v)
-    }
-
-  def get: Logic[A] = Logic.succeed(value)
-
-}
+case class Bound[A](value: A) extends Var[A]
 
 object Var {
 

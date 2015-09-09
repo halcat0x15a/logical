@@ -1,35 +1,33 @@
 package logical
 
-sealed trait Cons[+A] {
-
-  import Cons._
+sealed abstract class Cons[+A] {
 
   def ===[B >: A: Unify](that: Cons[B]): Logic[Unit] =
     (this, that) match {
-      case (Empty, Empty) => Logic.succeed(())
-      case (Cell(_, _), Empty) => Logic.fail
-      case (Empty, Cell(_, _)) => Logic.fail
+      case (Empty, Empty) => True
+      case (Cell(_, _), Empty) => Failure
+      case (Empty, Cell(_, _)) => Failure
       case (Cell(x, xs), Cell(y, ys)) => x === y &&& xs === ys
     }
 
   def toList[B >: A: Unify]: Logic[List[A]] =
     this match {
-      case Empty => Logic.succeed(Nil)
+      case Empty => Success(Nil)
       case Cell(head, tail) =>
         for {
           x <- head.get
           cons <- tail.get
-          xs <- cons.toList
+          xs <- cons.toList[B]
         } yield x :: xs
     }
 
 }
 
+case object Empty extends Cons[Nothing]
+
+case class Cell[A](head: Var[A], tail: Var[Cons[A]]) extends Cons[A]
+
 object Cons {
-
-  private case object Empty extends Cons[Nothing]
-
-  private case class Cell[A](head: Var[A], tail: Var[Cons[A]]) extends Cons[A]
 
   def apply[A]: Cons[A] = Empty
 
@@ -47,7 +45,7 @@ object Cons {
   def size[A: Unify](xs: Var[Cons[A]], n: Var[Nat]): Logic[Unit] = {
     val t = Var[Cons[A]]
     val m = Var[Nat]
-    xs === Empty &&& n === Nat() ||| xs === Cell(Var[A], t) &&& n === Nat(m) &&& size(t, m)
+    xs === Empty &&& n === Zero ||| xs === Cell(Var[A], t) &&& n === Succ(m) &&& size(t, m)
   }
 
   def contains[A: Unify](x: Var[A], xs: Var[Cons[A]]): Logic[Unit] = {
@@ -72,7 +70,7 @@ object Cons {
     val h = Var[A]
     val t, r = Var[Cons[A]]
     val m = Var[Nat]
-    n === Nat() &&& ys === Empty ||| n === Nat(m) &&& xs === Cell(h, t) &&& (ys === Cell(h, r) &&& combinations(m, t, r) ||| combinations(n, t, ys))
+    n === Zero &&& ys === Empty ||| n === Succ(m) &&& xs === Cell(h, t) &&& (ys === Cell(h, r) &&& combinations(m, t, r) ||| combinations(n, t, ys))
   }
 
   implicit def unify[A: Unify]: Unify[Cons[A]] =

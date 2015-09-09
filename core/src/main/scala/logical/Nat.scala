@@ -1,36 +1,30 @@
 package logical
 
-sealed trait Nat {
-
-  import Nat._
+sealed abstract class Nat {
 
   def ===(that: Nat): Logic[Unit] =
     (this, that) match {
-      case (Zero, Zero) => Logic.succeed(())
-      case (Zero, Succ(_)) => Logic.fail
-      case (Succ(_), Zero) => Logic.fail
+      case (Zero, Zero) => True
+      case (Zero, Succ(_)) => Failure
+      case (Succ(_), Zero) => Failure
       case (Succ(x), Succ(y)) => x === y
     }
 
   def toInt: Logic[Int] =
     this match {
-      case Zero => Logic.succeed(0)
+      case Zero => Success(0)
       case Succ(n) => n.get.flatMap(_.toInt).map(_ + 1)
     }
 
 }
 
+case object Zero extends Nat
+
+case class Succ(n: Var[Nat]) extends Nat
+
 object Nat {
 
-  private case object Zero extends Nat
-
-  private case class Succ(n: Var[Nat]) extends Nat
-
   val numbers: Stream[Nat] = Stream.iterate(Zero: Nat)(Succ(_))
-
-  def apply(): Nat = Zero
-
-  def apply(n: Var[Nat]): Nat = Succ(n)
 
   def apply(n: Int): Nat =
     if (n <= 0)
