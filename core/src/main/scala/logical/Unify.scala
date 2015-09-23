@@ -12,7 +12,7 @@ object Unify {
     new Unify[A] {
       def unify(x: A, y: A): Logic[Unit] =
         if (x == y)
-          True
+          Logic.True
         else
           Failure
     }

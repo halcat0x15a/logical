@@ -4,7 +4,7 @@ sealed abstract class Nat {
 
   def ===(that: Nat): Logic[Unit] =
     (this, that) match {
-      case (Zero, Zero) => True
+      case (Zero, Zero) => Logic.True
       case (Zero, Succ(_)) => Failure
       case (Succ(_), Zero) => Failure
       case (Succ(x), Succ(y)) => x === y
@@ -12,7 +12,7 @@ sealed abstract class Nat {
 
   def toInt: Logic[Int] =
     this match {
-      case Zero => Success(0)
+      case Zero => Logic.success(0)
       case Succ(n) => n.get.flatMap(_.toInt).map(_ + 1)
     }
 

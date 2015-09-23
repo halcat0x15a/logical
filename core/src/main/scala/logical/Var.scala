@@ -14,12 +14,11 @@ sealed abstract class Var[+A] {
 
   final lazy val get: Logic[A] =
     this match {
-      case Bound(value) => Success(value)
-      case Unbound(key) =>
-        new Logic[A] {
-          def apply(env: Env): Stream[(Env, A)] =
-            env.get(key).map(value => (env, value.asInstanceOf[A])).toStream
-        }
+      case Bound(value) => Logic.success(value)
+      case Unbound(key) => Get(env => (env, env.get(key))).flatMap {
+        case (env, Some(value)) => Put(env, value.asInstanceOf[A])
+        case (_, None) => Failure
+      }
     }
 
 }

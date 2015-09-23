@@ -39,20 +39,16 @@ object Env {
   implicit val empty: Env = Env(LongMap.empty, LongMap.empty)
 
   def add[A](key1: Long, key2: Long)(implicit A: Unify[A]): Logic[Unit] =
-    new Logic[Unit] {
-      def apply(env: Env): Stream[(Env, Unit)] =
-        (env.get(key1), env.get(key2)) match {
-          case (Some(value1), Some(value2)) => A.unify(value1.asInstanceOf[A], value2.asInstanceOf[A])(env)
-          case (None, Some(value)) => Stream((env.put(key1, value), ()))
-          case (Some(value), None) => Stream((env.put(key2, value), ()))
-          case (None, None) => Stream((env.put(key1, key2), ()))
-        }
+    Get(env => (env, env.get(key1), env.get(key2))).flatMap {
+      case (env, Some(value1), Some(value2)) => A.unify(value1.asInstanceOf[A], value2.asInstanceOf[A])
+      case (env, None, Some(value)) => Put(env.put(key1, value), ())
+      case (env, Some(value), None) => Put(env.put(key2, value), ())
+      case (env, None, None) => Put(env.add(key1, key2), ())
     }
 
   def put[A](key: Long, value: A)(implicit A: Unify[A]): Logic[Unit] =
-    new Logic[Unit] {
-      def apply(env: Env): Stream[(Env, Unit)] =
-        env.get(key).fold(Stream((env.put(key, value), ())))(value0 => A.unify(value0.asInstanceOf[A], value)(env))
+    Get(env => (env, env.get(key))).flatMap {
+      case (env, opt) => opt.fold(Put(env.put(key, value), ()): Logic[Unit])(value0 => A.unify(value0.asInstanceOf[A], value))
     }
 
 }

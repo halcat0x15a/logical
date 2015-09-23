@@ -4,7 +4,7 @@ sealed abstract class Cons[+A] {
 
   def ===[B >: A: Unify](that: Cons[B]): Logic[Unit] =
     (this, that) match {
-      case (Empty, Empty) => True
+      case (Empty, Empty) => Logic.True
       case (Cell(_, _), Empty) => Failure
       case (Empty, Cell(_, _)) => Failure
       case (Cell(x, xs), Cell(y, ys)) => x === y &&& xs === ys
@@ -12,7 +12,7 @@ sealed abstract class Cons[+A] {
 
   def toList[B >: A: Unify]: Logic[List[A]] =
     this match {
-      case Empty => Success(Nil)
+      case Empty => Logic.success(Nil)
       case Cell(head, tail) =>
         for {
           x <- head.get
