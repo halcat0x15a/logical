@@ -1,4 +1,4 @@
-package logical
+/*package logical
 
 import scala.annotation.tailrec
 import scala.collection.immutable.LongMap
@@ -52,3 +52,4 @@ object Env {
     }
 
 }
+ */

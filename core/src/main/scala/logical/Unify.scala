@@ -1,4 +1,4 @@
-package logical
+/*package logical
 
 trait Unify[-A] {
 
@@ -18,3 +18,4 @@ object Unify {
     }
 
 }
+ */

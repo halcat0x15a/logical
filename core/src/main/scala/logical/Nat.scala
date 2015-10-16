@@ -1,4 +1,4 @@
-package logical
+/*package logical
 
 sealed abstract class Nat {
 
@@ -58,3 +58,4 @@ object Nat {
     }
 
 }
+ */

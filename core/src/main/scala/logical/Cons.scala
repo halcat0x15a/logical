@@ -1,4 +1,4 @@
-package logical
+/*package logical
 
 sealed abstract class Cons[+A] {
 
@@ -79,3 +79,4 @@ object Cons {
     }
 
 }
+ */

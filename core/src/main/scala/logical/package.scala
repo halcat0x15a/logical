@@ -1,4 +1,4 @@
-import scala.language.{higherKinds, implicitConversions}
+/*import scala.language.{higherKinds, implicitConversions}
 
 package object logical {
 
@@ -7,3 +7,4 @@ package object logical {
   implicit def liftVar[F[_], A](value: F[A])(implicit F: kits.Functor[F]): F[Var[A]] = F.map(value)(Var(_))
 
 }
+ */
