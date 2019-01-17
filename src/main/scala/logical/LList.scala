@@ -1,6 +1,6 @@
 package logical
 
-sealed trait LList[A] {
+sealed abstract class LList[A] {
   def ===(that: LList[A])(implicit unify: Unify[A]): Logic[Unit] =
     (this, that) match {
       case (LNil(), LNil()) =>
@@ -32,19 +32,16 @@ object LList {
     values.foldRight(LNil(): LList[A])(LCons(_, _))
 
   def append[A: Unify](xs: LVar[LList[A]], ys: LVar[LList[A]], zs: LVar[LList[A]]): Logic[Unit] =
-    (xs === LNil[A] &&& zs === ys) ||| (for {
-      h <- LVar[A]
-      xt <- LVar[LList[A]]
-      zt <- LVar[LList[A]]
-      _ <- xs === LCons(h, xt) &&& zs === LCons(h, zt) &&& append(xt, ys, zt)
-    } yield ())
+    xs === LNil[A] &&& zs === ys ||| Logic { (h: LVar[A], xt: LVar[LList[A]], zt: LVar[LList[A]]) =>
+      xs === LCons(h, xt) &&& zs === LCons(h, zt) &&& append(xt, ys, zt)
+    }
 
-  implicit class LVarOps[A](val lvar: LVar[LList[A]]) {
+  implicit class LVarOps[A](val lvar: LVar[LList[A]]) extends AnyVal {
     def toList: Logic[List[A]] = lvar.get.flatMap(_.toList)
   }
 
   implicit def unify[A](implicit unify: Unify[A]): Unify[LList[A]] =
     new Unify[LList[A]] {
-      def apply(x: LList[A], y: LList[A]): Logic[Unit] = x === y
+      def apply(xs: LList[A], ys: LList[A]): Logic[Unit] = xs === ys
     }
 }

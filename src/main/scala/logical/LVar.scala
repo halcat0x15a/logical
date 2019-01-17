@@ -1,6 +1,6 @@
 package logical
 
-import java.util.concurrent.atomic.AtomicLong
+import scala.language.implicitConversions
 
 sealed abstract class LVar[A] {
   def ===(that: LVar[A])(implicit unify: Unify[A]): Logic[Unit] =
