@@ -18,7 +18,7 @@ sealed abstract class LVar[A] {
       case LVar.Unbound(k) =>
         Logic.get.flatMap { case (_, vars) =>
           Logic.find(k, vars) match {
-            case None => Logic.Failure()
+            case None => Logic.Failure
             case Some(v) => Logic.Success(v.asInstanceOf[A])
           }
         }

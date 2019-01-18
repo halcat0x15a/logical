@@ -1,19 +1,10 @@
 package logical
 
-sealed abstract class LList[A] {
-  def ===(that: LList[A])(implicit unify: Unify[A]): Logic[Unit] =
-    (this, that) match {
-      case (LNil(), LNil()) =>
-        Logic.Success(())
-      case (LCons(x, xs), LCons(y, ys)) =>
-        x === y &&& xs === ys
-      case _ =>
-        Logic.Failure()
-    }
-
+sealed abstract class LList[+A] {
   def toList: Logic[List[A]] =
     this match {
-      case LNil() => Logic.Success(Nil)
+      case LNil =>
+        Logic.Success(Nil)
       case LCons(h, t) =>
         for {
           h <- h.get
@@ -25,19 +16,34 @@ sealed abstract class LList[A] {
 
 case class LCons[A](head: LVar[A], tail: LVar[LList[A]]) extends LList[A]
 
-case class LNil[A]() extends LList[A]
+case object LNil extends LList[Nothing]
 
 object LList {
   def apply[A](values: A*): LList[A] =
-    values.foldRight(LNil(): LList[A])(LCons(_, _))
+    values.foldRight(LNil: LList[A])(LCons(_, _))
 
   def append[A: Unify](xs: LVar[LList[A]], ys: LVar[LList[A]], zs: LVar[LList[A]]): Logic[Unit] =
-    xs === LNil[A] &&& zs === ys ||| Logic { (h: LVar[A], xt: LVar[LList[A]], zt: LVar[LList[A]]) =>
-      xs === LCons(h, xt) &&& zs === LCons(h, zt) &&& append(xt, ys, zt)
-    }
+    xs === LNil &&& ys === zs ||| (for {
+      h <- LVar[A]
+      xt <- LVar[LList[A]]
+      zt <- LVar[LList[A]]
+      _ <- xs === LCons(h, xt) &&& zs === LCons(h, zt) &&& append(xt, ys, zt)
+    } yield ())
 
-  implicit class LVarOps[A](val lvar: LVar[LList[A]]) extends AnyVal {
-    def toList: Logic[List[A]] = lvar.get.flatMap(_.toList)
+  implicit class LListOps[A](val self: LList[A]) extends AnyVal {
+    def ===(that: LList[A])(implicit unify: Unify[A]): Logic[Unit] =
+      (self, that) match {
+        case (LNil, LNil) =>
+          Logic.unit
+        case (LCons(x, xs), LCons(y, ys)) =>
+          x === y &&& xs === ys
+        case _ =>
+          Logic.Failure
+      }
+  }
+
+  implicit class LVarOps[A](val self: LVar[LList[A]]) extends AnyVal {
+    def toList: Logic[List[A]] = self.get.flatMap(_.toList)
   }
 
   implicit def unify[A](implicit unify: Unify[A]): Unify[LList[A]] =

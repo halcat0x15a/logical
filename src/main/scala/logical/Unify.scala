@@ -11,8 +11,8 @@ trait LowPriorityUnify {
     new Unify[A] {
       def apply(x: A, y: A): Logic[Unit] =
         if (x == y)
-          Logic.Success(())
+          Logic.unit
         else
-          Logic.Failure()
+          Logic.Failure
     }
 }

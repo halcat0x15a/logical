@@ -3,25 +3,46 @@ package logical
 import scala.annotation.tailrec
 import scala.collection.immutable.LongMap
 
-abstract class Logic[A] {
+abstract class Logic[+A] {
   def map[B](f: A => B): Logic[B] = flatMap(a => Logic.Success(f(a)))
 
   def flatMap[B](f: A => Logic[B]): Logic[B] =
     this match {
       case Logic.Success(a) => f(a)
-      case Logic.Failure() => Logic.Failure()
+      case Logic.Failure => Logic.Failure
       case Logic.FlatMap(e, k) => Logic.FlatMap(e, (a: Any) => k(a).flatMap(f))
     }
 
-  def &&&[B](that: => Logic[B]): Logic[B] = flatMap(_ => that)
+  def split: Logic[Option[(A, Logic[A])]] = {
+    def go(logic: Logic[A], stack: List[Logic[A]]) = loop(logic, stack)
+    @tailrec def loop(logic: Logic[A], stack: List[Logic[A]]): Logic[Option[(A, Logic[A])]] =
+      logic match {
+        case Logic.Success(a) =>
+          Logic.Success(Some((a, Logic.sum(stack))))
+        case Logic.Failure =>
+          stack match {
+            case Nil => Logic.Success(None)
+            case h :: t => loop(h, t)
+          }
+        case Logic.FlatMap(Logic.Choice, k) =>
+          loop(k(true), k(false) :: stack)
+        case Logic.FlatMap(effect, k) =>
+          Logic.FlatMap(effect, (a: Any) => go(k(a), stack))
+      }
+    loop(this, Nil)
+  }
 
-  def |||(that: => Logic[A]): Logic[A] = Logic.choice(this, that)
+  def once: Logic[A] =
+    split.flatMap {
+      case None => Logic.Failure
+      case Some((logic, _)) => Logic.Success(logic)
+    }
 
   def toStream: Stream[A] = {
     def loop(logic: Logic[A], id: Long, vars: LongMap[LVar[Any]]): Stream[A] =
       logic match {
         case Logic.Success(a) => Stream(a)
-        case Logic.Failure() => Stream.empty
+        case Logic.Failure => Stream.empty
         case Logic.FlatMap(Logic.Get, k) => loop(k((id, vars)), id, vars)
         case Logic.FlatMap(Logic.Put(id, vars), k) => loop(k(()), id, vars)
         case Logic.FlatMap(Logic.Choice, k) => loop(k(true), id, vars) ++ loop(k(false), id, vars)
@@ -33,7 +54,7 @@ abstract class Logic[A] {
 object Logic {
   type State = (Long, LongMap[LVar[Any]])
 
-  case class Failure[A]() extends Logic[A]
+  case object Failure extends Logic[Nothing]
 
   case class Success[A](value: A) extends Logic[A]
 
@@ -47,11 +68,15 @@ object Logic {
 
   case object Choice extends Effect[Boolean]
 
+  val unit: Logic[Unit] = Success(())
+
   val get: Logic[State] = FlatMap(Get, (s: State) => Success(s))
 
-  def put(id: Long, vars: LongMap[LVar[Any]]): Logic[Unit] = FlatMap(Put(id, vars), (_: Unit) => Success(()))
+  def put(id: Long, vars: LongMap[LVar[Any]]): Logic[Unit] = FlatMap(Put(id, vars), (_: Unit) => unit)
 
   def choice[A](x: => Logic[A], y: => Logic[A]): Logic[A] = FlatMap(Choice, (test: Boolean) => if (test) x else y)
+
+  def sum[A](list: List[Logic[A]]): Logic[A] = list.foldRight(Failure: Logic[A])(_ ||| _)
 
   def find(key: Long, vars: LongMap[LVar[Any]]): Option[Any] = {
     @tailrec def loop(key: Long, path: Vector[Long]): Option[Any] =
@@ -90,15 +115,9 @@ object Logic {
       }
     }
 
-  def apply[A, R](f: LVar[A] => Logic[R]): Logic[R] =
-    for (a <- LVar[A]; r <- f(a)) yield r
+  implicit class LogicOps[A](val self: Logic[A]) extends AnyVal {
+    def &&&[B](that: => Logic[B]): Logic[B] = self.flatMap(_ => that)
 
-  def apply[A, B, R](f: (LVar[A], LVar[B]) => Logic[R]): Logic[R] =
-    for (a <- LVar[A]; b <- LVar[B]; r <- f(a, b)) yield r
-
-  def apply[A, B, C, R](f: (LVar[A], LVar[B], LVar[C]) => Logic[R]): Logic[R] =
-    for (a <- LVar[A]; b <- LVar[B]; c <- LVar[C]; r <- f(a, b, c)) yield r
-
-  def apply[A, B, C, D, R](f: (LVar[A], LVar[B], LVar[C], LVar[D]) => Logic[R]): Logic[R] =
-    for (a <- LVar[A]; b <- LVar[B]; c <- LVar[C]; d <- LVar[D]; r <- f(a, b, c, d)) yield r
+    def |||(that: => Logic[A]): Logic[A] = choice(self, that)
+  }
 }
