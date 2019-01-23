@@ -1,7 +1,7 @@
 package logical
 
 sealed abstract class LList[+A] {
-  def toList: Logic[List[A]] =
+  final def toList: Logic[List[A]] =
     this match {
       case LNil =>
         Logic.Success(Nil)
