@@ -1,11 +1,11 @@
 package logical
 
 import scala.annotation.tailrec
-import scala.collection.immutable.LongMap
+import scala.collection.immutable.IntMap
 import scala.language.implicitConversions
 
-sealed abstract class LVar[A] {
-  final def ===(that: LVar[A])(implicit unify: Unify[A]): Logic[Unit] =
+sealed abstract class LVar[+A] {
+  def ===[B >: A](that: LVar[B])(implicit unify: Unify[B]): Logic[Unit] =
     (this, that) match {
       case (LVar.Bound(x), LVar.Bound(y)) => unify(x, y)
       case (LVar.Unbound(k), LVar.Bound(v)) => LVar.bind(k, v)
@@ -13,62 +13,63 @@ sealed abstract class LVar[A] {
       case (LVar.Unbound(x), LVar.Unbound(y)) => LVar.relate(x, y)
     }
 
-  final def get: Logic[A] =
+  def get: Logic[A] =
     this match {
       case LVar.Bound(v) =>
         Logic.Success(v)
       case LVar.Unbound(k) =>
-        Logic.get.flatMap { case (_, vars) =>
-          LVar.find(k, vars) match {
+        Logic.get.flatMap { state =>
+          LVar.find[A](k, state.vars) match {
             case None => Logic.Failure
-            case Some(v) => Logic.Success(v.asInstanceOf[A])
+            case Some(v) => Logic.Success(v)
           }
         }
     }
 }
 
 object LVar {
-  case class Unbound[A](key: Long) extends LVar[A]
+  case class Unbound(key: Int) extends LVar[Nothing]
 
   case class Bound[A](value: A) extends LVar[A]
 
   def apply[A]: Logic[LVar[A]] =
-    Logic.get.flatMap { case (id, vars) =>
-      Logic.put(id + 1, vars).map(_ => Unbound(id))
-    }
+    for {
+      state <- Logic.get
+      _ <- Logic.put(state.copy(id = state.id + 1))
+    } yield Unbound(state.id)
 
-  def find(key: Long, vars: LongMap[LVar[Any]]): Option[Any] = {
-    @tailrec def loop(key: Long, path: Vector[Long]): Option[Any] =
+  def find[A](key: Int, vars: IntMap[LVar[Any]]): Option[A] = {
+    @tailrec def loop(key: Int, path: Vector[Int]): Option[A] =
       vars.get(key) match {
         case None => None
-        case Some(LVar.Bound(v)) => Some(v)
+        case Some(LVar.Bound(v)) => Some(v.asInstanceOf[A])
         case Some(LVar.Unbound(k)) if path.contains(k) => None
         case Some(LVar.Unbound(k)) => loop(k, path :+ k)
       }
     loop(key, Vector(key))
   }
 
-  def bind[A](key: Long, value: A)(implicit unify: Unify[A]): Logic[Unit] =
-    Logic.get.flatMap { case (id, vars) =>
-      find(key, vars) match {
+  def bind[A](key: Int, value: A)(implicit unify: Unify[A]): Logic[Unit] =
+    Logic.get.flatMap { state =>
+      find[A](key, state.vars) match {
         case None =>
-          Logic.put(id, vars + (key -> LVar.Bound(value)))
+          Logic.put(state.copy(vars = state.vars + (key -> LVar.Bound(value))))
         case Some(v) =>
-          unify(value, v.asInstanceOf[A])
+          unify(value, v)
       }
     }
 
-  def relate[A](x: Long, y: Long)(implicit unify: Unify[A]): Logic[Unit] =
-    Logic.get.flatMap { case (id, vars) =>
-      (find(x, vars), find(y, vars)) match {
+  def relate[A](x: Int, y: Int)(implicit unify: Unify[A]): Logic[Unit] =
+    Logic.get.flatMap { state =>
+      (find[A](x, state.vars), find[A](y, state.vars)) match {
         case (None, None) =>
-          Logic.put(id, vars + (x -> LVar.Unbound[Any](y)) + (y -> LVar.Unbound[Any](x)))
+          Logic.put(state.copy(vars = state.vars + (x -> LVar.Unbound(y)) + (y -> LVar.Unbound(x))))
         case (Some(v), None) =>
-          Logic.put(id, vars + (y -> LVar.Bound(v)))
+          Logic.put(state.copy(vars = state.vars + (y -> LVar.Bound(v))))
         case (None, Some(v)) =>
-          Logic.put(id, vars + (x -> LVar.Bound(v)))
+          Logic.put(state.copy(vars = state.vars + (x -> LVar.Bound(v))))
         case (Some(x), Some(y)) =>
-          unify(x.asInstanceOf[A], y.asInstanceOf[A])
+          unify(x, y)
       }
     }
 

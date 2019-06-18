@@ -1,7 +1,17 @@
 package logical
 
 sealed abstract class LList[+A] {
-  final def toList: Logic[List[A]] =
+  def ===[B >: A](that: LList[B])(implicit unify: Unify[B]): Logic[Unit] =
+    (this, that) match {
+      case (LNil, LNil) =>
+        Logic.unit
+      case (LCons(x, xs), LCons(y, ys)) =>
+        x === y &&& xs === ys
+      case _ =>
+        Logic.Failure
+    }
+
+  def toList: Logic[List[A]] =
     this match {
       case LNil =>
         Logic.Success(Nil)
@@ -29,18 +39,6 @@ object LList {
       zt <- LVar[LList[A]]
       _ <- xs === LCons(h, xt) &&& zs === LCons(h, zt) &&& append(xt, ys, zt)
     } yield ())
-
-  implicit class LListOps[A](val self: LList[A]) extends AnyVal {
-    def ===(that: LList[A])(implicit unify: Unify[A]): Logic[Unit] =
-      (self, that) match {
-        case (LNil, LNil) =>
-          Logic.unit
-        case (LCons(x, xs), LCons(y, ys)) =>
-          x === y &&& xs === ys
-        case _ =>
-          Logic.Failure
-      }
-  }
 
   implicit class LVarOps[A](val self: LVar[LList[A]]) extends AnyVal {
     def toList: Logic[List[A]] = self.get.flatMap(_.toList)

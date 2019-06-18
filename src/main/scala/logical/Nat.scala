@@ -3,7 +3,17 @@ package logical
 import scala.annotation.tailrec
 
 sealed abstract class Nat {
-  final def toInt: Logic[Int] =
+  def ===(that: Nat): Logic[Unit] =
+    (this, that) match {
+      case (Nat.Z, Nat.Z) =>
+        Logic.unit
+      case (Nat.S(m), Nat.S(n)) =>
+        m === n
+      case _ =>
+        Logic.Failure
+    }
+
+  def toInt: Logic[Int] =
     this match {
       case Nat.Z => Logic.Success(0)
       case Nat.S(n) => n.toInt.map(_ + 1)
@@ -34,18 +44,6 @@ object Nat {
       n <- LVar[Nat]
       _ <- plus(m, y, x) &&& q === S(n) &&& divmod(m, y, n, r)
     } yield ())
-
-  implicit class NatOps(val self: Nat) extends AnyVal {
-    def ===(that: Nat): Logic[Unit] =
-      (self, that) match {
-        case (Z, Z) =>
-          Logic.unit
-        case (S(m), S(n)) =>
-          m === n
-        case _ =>
-          Logic.Failure
-      }
-  }
 
   implicit class LVarOps(val self: LVar[Nat]) extends AnyVal {
     def <=(that: LVar[Nat]): Logic[Unit] =
